@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   Users,
   Building2,
+  Briefcase,
+  GraduationCap,
   CalendarDays,
   FileText,
   ShieldCheck
@@ -17,6 +19,8 @@ const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/organization", label: "Organization", icon: Building2 },
+  { href: "/admin/job-section", label: "Job Section", icon: Briefcase },
+  { href: "/admin/qualifications", label: "Qualifications", icon: GraduationCap },
   { href: "/leave", label: "Leave", icon: CalendarDays },
   { href: "/documents", label: "Documents", icon: FileText },
   { href: "/admin/roles", label: "Roles & Permissions", icon: ShieldCheck }
