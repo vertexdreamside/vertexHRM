@@ -4,6 +4,15 @@
 
 :root {
   color-scheme: light;
+  /* Neutral, modern defaults — deliberately not the logo's purple, per
+     request: the logo mark keeps its own gradient (it's baked into the
+     SVG files), but site-wide UI chrome (buttons, active states,
+     badges) uses a neutral zinc scale instead. Corporate Branding (§4)
+     can still override these at runtime for anyone who wants the
+     purple back — see app/(dashboard)/admin/branding/page.tsx. */
+  --brand-start: #27272a;
+  --brand-end: #09090b;
+  --brand-ink: #18181b;
 }
 
 body {
