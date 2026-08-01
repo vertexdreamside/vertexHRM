@@ -1,0 +1,6 @@
+<svg width="320" height="320" viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg">
+<defs><linearGradient id="grad_vertexhrm" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2f3fd9"/><stop offset="100%" stop-color="#7b3fd9"/></linearGradient></defs>
+<g transform="translate(-40,0)"><polygon points="200,0 80,320 200,256" fill="url(#grad_vertexhrm)" />
+<polygon points="200,0 320,320 200,256" fill="url(#grad_vertexhrm)" opacity="0.85"/>
+<polygon points="80,320 320,320 200,256" fill="url(#grad_vertexhrm)" opacity="0.65"/></g>
+</svg>
