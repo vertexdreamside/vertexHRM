@@ -42,20 +42,42 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Brand panel — hidden on small screens */}
-      <div className="hidden w-1/2 flex-col justify-between bg-brand-gradient p-12 text-white lg:flex">
+      <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
         <Image
-          src="/vertexhrm-logo-reversed.svg"
-          alt="vertexhrm"
-          width={220}
-          height={66}
+          src="/login-background.png"
+          alt=""
+          fill
           priority
+          className="object-cover"
+          aria-hidden="true"
         />
-        <p className="max-w-sm font-display text-2xl font-medium leading-snug">
+        {/* Subtle dark wash so white text stays legible over every part
+            of the image, whichever color happens to sit underneath. */}
+        <div className="absolute inset-0 bg-black/25" aria-hidden="true" />
+
+        <div className="relative z-10">
+          {/* Frosted glass card behind the logo so it "pops" regardless
+              of what color of the background sits behind it, rather
+              than relying on the reversed (white) mark having enough
+              contrast on its own against a busy multi-color image. */}
+          <div className="inline-block rounded-2xl bg-white/15 p-5 shadow-lg backdrop-blur-md">
+            <Image
+              src="/vertexhrm-logo-reversed.svg"
+              alt="vertexhrm"
+              width={220}
+              height={66}
+              priority
+            />
+          </div>
+        </div>
+
+        <p className="relative z-10 max-w-sm font-display text-2xl font-medium leading-snug drop-shadow-sm">
           HR, admin, and operations for the whole organization — in one
           place.
         </p>
-        <p className="text-sm text-white/70">
-          Round Table Seychelles &middot; Internal platform
+
+        <p className="relative z-10 text-sm text-white/80 drop-shadow-sm">
+          Vertex HRM &mdash; a product of <span className="font-medium">VERTEX</span>
         </p>
       </div>
 
