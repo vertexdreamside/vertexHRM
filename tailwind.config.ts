@@ -11,19 +11,19 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: "#eef0fd",
-          100: "#d6d9fa",
-          200: "#adb3f5",
-          300: "#848ceb",
-          400: "#5d63e0",
-          500: "#2f3fd9", // logo gradient start
-          600: "#4a3ed6",
-          700: "#5f3fd8",
-          800: "#7b3fd9", // logo gradient end
-          900: "#4c2589"
+          50: "#fafafa",
+          100: "#f4f4f5",
+          200: "#e4e4e7",
+          300: "#d4d4d8",
+          400: "#a1a1aa",
+          500: "var(--brand-start, #27272a)",
+          600: "#3f3f46",
+          700: "#27272a",
+          800: "var(--brand-end, #09090b)",
+          900: "#09090b"
         },
         ink: {
-          DEFAULT: "#17172b", // wordmark color
+          DEFAULT: "var(--brand-ink, #17172b)",
           muted: "#4a4a63",
           soft: "#7b7b93"
         },
@@ -46,7 +46,8 @@ const config: Config = {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"]
       },
       backgroundImage: {
-        "brand-gradient": "linear-gradient(135deg, #2f3fd9 0%, #7b3fd9 100%)"
+        "brand-gradient":
+          "linear-gradient(135deg, var(--brand-start, #2f3fd9) 0%, var(--brand-end, #7b3fd9) 100%)"
       },
       borderRadius: {
         card: "12px"
