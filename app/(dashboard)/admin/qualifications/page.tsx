@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Lightbulb,
   GraduationCap,
@@ -66,8 +68,10 @@ const TABS: {
   { key: "nationalities", label: "Nationalities", icon: Flag, withDescription: false }
 ];
 
-export default function QualificationsPage() {
-  const [activeTab, setActiveTab] = useState<QualificationListType>("skills");
+function QualificationsPageInner() {
+  const searchParams = useSearchParams();
+  const initialTab = (searchParams.get("tab") as QualificationListType) || "skills";
+  const [activeTab, setActiveTab] = useState<QualificationListType>(initialTab);
   const activeMeta = TABS.find((t) => t.key === activeTab)!;
 
   return (
@@ -259,5 +263,13 @@ function QualificationListTab({
         </Modal>
       )}
     </div>
+  );
+}
+
+export default function QualificationsPage() {
+  return (
+    <Suspense fallback={null}>
+      <QualificationsPageInner />
+    </Suspense>
   );
 }
