@@ -1,14 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Search, Info, LifeBuoy, KeyRound, LogOut, ChevronDown } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { createClient } from "@/lib/supabase/client";
 
 export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: string | null }) {
+  const router = useRouter();
+  const supabase = createClient();
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showSupport, setShowSupport] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -97,6 +103,16 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
               <div className="my-1 border-t border-surface-border" />
               <button
                 role="menuitem"
+                onClick={async () => {
+                  const sessionRowId = sessionStorage.getItem("vertexhrm_session_row_id");
+                  if (sessionRowId) {
+                    await supabase.from("user_sessions").update({ logout_at: new Date().toISOString() }).eq("id", sessionRowId);
+                    sessionStorage.removeItem("vertexhrm_session_row_id");
+                  }
+                  await supabase.auth.signOut();
+                  router.push("/login");
+                  router.refresh();
+                }}
                 className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-state-danger hover:bg-state-dangerBg"
               >
                 <LogOut size={16} /> Sign out
@@ -133,33 +149,66 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
       {showChangePassword && (
         <Modal title="Change password" onClose={() => setShowChangePassword(false)}>
           <form
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              // TODO(supabase): supabase.auth.updateUser({ password: newPassword })
-              // after re-verifying the current password via signInWithPassword.
+              setChangePasswordError(null);
+              const form = new FormData(e.currentTarget as HTMLFormElement);
+              const currentPassword = String(form.get("currentPassword"));
+              const newPassword = String(form.get("newPassword"));
+              const confirmPassword = String(form.get("confirmPassword"));
+
+              if (newPassword !== confirmPassword) {
+                setChangePasswordError("New password and confirmation don't match.");
+                return;
+              }
+
+              setChangingPassword(true);
+              const { data: { user } } = await supabase.auth.getUser();
+              if (!user?.email) {
+                setChangingPassword(false);
+                setChangePasswordError("Couldn't determine your account email.");
+                return;
+              }
+
+              // Re-verify the current password before allowing the
+              // change — the same check Maintenance's re-auth gate uses.
+              const { error: verifyError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
+              if (verifyError) {
+                setChangingPassword(false);
+                setChangePasswordError("Current password isn't right.");
+                return;
+              }
+
+              const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+              setChangingPassword(false);
+              if (updateError) {
+                setChangePasswordError(updateError.message);
+                return;
+              }
               setShowChangePassword(false);
             }}
             className="space-y-4"
           >
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">Current password *</label>
-              <input type="password" required className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
+              <input name="currentPassword" type="password" required className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">New password *</label>
-              <input type="password" required className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
+              <input name="newPassword" type="password" required minLength={8} className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">Confirm new password *</label>
-              <input type="password" required className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
+              <input name="confirmPassword" type="password" required minLength={8} className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
             </div>
             <p className="text-xs text-ink-soft">Must meet the Password Policy set in Admin → Configuration.</p>
+            {changePasswordError && <p className="text-sm text-state-danger">{changePasswordError}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowChangePassword(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
                 Cancel
               </button>
-              <button type="submit" className="rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90">
-                Update password
+              <button type="submit" disabled={changingPassword} className="rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+                {changingPassword ? "Updating..." : "Update password"}
               </button>
             </div>
           </form>
