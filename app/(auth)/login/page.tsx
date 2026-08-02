@@ -19,7 +19,7 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
@@ -35,6 +35,19 @@ export default function LoginPage() {
       return;
     }
 
+    // Real Active Sessions log (Configuration §5.9) — one row per
+    // login, device info from the browser's own user agent string.
+    if (data.user) {
+      const { data: sessionRow } = await supabase
+        .from("user_sessions")
+        .insert({ user_id: data.user.id, device_info: navigator.userAgent })
+        .select("id")
+        .single();
+      if (sessionRow) {
+        sessionStorage.setItem("vertexhrm_session_row_id", sessionRow.id);
+      }
+    }
+
     router.push("/dashboard");
     router.refresh();
   }
@@ -44,7 +57,7 @@ export default function LoginPage() {
       {/* Brand panel — hidden on small screens */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden p-12 text-white lg:flex">
         <Image
-          src="/login-background.png"
+          src="/login-background.webp"
           alt=""
           fill
           priority
