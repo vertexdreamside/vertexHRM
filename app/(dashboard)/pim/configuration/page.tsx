@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { SlidersHorizontal, ListPlus, Upload, Wallet, UserX, Plus, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import type { OptionalField, ReportingMethod, TerminationReason } from "@/lib/types";
@@ -37,8 +38,9 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-export default function PimConfigurationPage() {
-  const [activeTab, setActiveTab] = useState<TabKey>("optionalfields");
+function PimConfigurationPageInner() {
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState<TabKey>((searchParams.get("tab") as TabKey) || "optionalfields");
   const [fields, setFields] = useState<OptionalField[]>(SEED_OPTIONAL_FIELDS);
   const [reportingMethods, setReportingMethods] = useState<ReportingMethod[]>(SEED_REPORTING_METHODS);
   const [terminationReasons, setTerminationReasons] = useState<TerminationReason[]>(SEED_TERMINATION_REASONS);
@@ -188,5 +190,13 @@ export default function PimConfigurationPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PimConfigurationPage() {
+  return (
+    <Suspense fallback={null}>
+      <PimConfigurationPageInner />
+    </Suspense>
   );
 }
