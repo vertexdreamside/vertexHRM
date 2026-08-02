@@ -87,22 +87,32 @@ export default function MyInfoPage() {
       <h1 className="font-display text-2xl font-medium text-ink">My Info</h1>
       <p className="mt-1 text-sm text-ink-muted">Your own profile — self-service.</p>
 
-      <div className="mt-6 flex flex-wrap gap-1 border-b border-surface-border">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={clsx(
-              "flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors sm:text-sm",
-              activeTab === key ? "border-brand-500 text-brand-700" : "border-transparent text-ink-muted hover:text-ink"
-            )}
-          >
-            <Icon size={15} /> {label}
-          </button>
-        ))}
-      </div>
+      <div className="mt-6 flex flex-col gap-6 lg:flex-row">
+        <div className="shrink-0 lg:w-64">
+          <div className="rounded-card border border-surface-border bg-white p-5 text-center">
+            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-brand-gradient text-xl font-medium text-white">
+              {ME.fullName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+            <p className="mt-3 font-display text-base font-medium text-ink">{ME.fullName}</p>
+          </div>
 
-      <div className="mt-6 max-w-2xl">
+          <nav className="mt-3 space-y-0.5 rounded-card border border-surface-border bg-white p-2">
+            {TABS.map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={clsx(
+                  "flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors",
+                  activeTab === key ? "bg-brand-50 font-medium text-brand-700" : "text-ink-muted hover:bg-surface-subtle hover:text-ink"
+                )}
+              >
+                <Icon size={16} /> {label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        <div className="max-w-2xl flex-1">
         {activeTab === "personal" && (
           <div className="rounded-card border border-surface-border bg-white p-6">
             <div className="grid grid-cols-2 gap-4">
@@ -286,6 +296,7 @@ export default function MyInfoPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
     </div>
   );
