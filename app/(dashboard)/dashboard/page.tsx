@@ -13,6 +13,7 @@ import {
   Megaphone
 } from "lucide-react";
 import { clsx } from "clsx";
+import { createClient } from "@/lib/supabase/client";
 import {
   PieChart,
   Pie,
@@ -114,9 +115,43 @@ function Card({
 // Time at Work — punch in/out + weekly hours
 // ---------------------------------------------------------------------
 function TimeAtWorkCard() {
+  const supabase = createClient();
   const [punchedIn, setPunchedIn] = useState(false);
   const [punchTime, setPunchTime] = useState<Date | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
+  const [openPunchId, setOpenPunchId] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function init() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: appUser } = await supabase.from("app_users").select("employee_id").eq("id", user.id).single();
+      const employeeId = appUser?.employee_id ?? null;
+      setMyEmployeeId(employeeId);
+      if (!employeeId) return;
+
+      // Resume an already-open punch from earlier today, if any —
+      // otherwise refreshing the page would silently lose the "still
+      // punched in" state even though the database row is still open.
+      const { data: openPunch } = await supabase
+        .from("time_punches")
+        .select("id, punch_in")
+        .eq("employee_id", employeeId)
+        .is("punch_out", null)
+        .order("punch_in", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (openPunch) {
+        setOpenPunchId(openPunch.id);
+        setPunchedIn(true);
+        setPunchTime(new Date(openPunch.punch_in));
+      }
+    }
+    init();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!punchedIn || !punchTime) return;
@@ -126,16 +161,25 @@ function TimeAtWorkCard() {
     return () => clearInterval(interval);
   }, [punchedIn, punchTime]);
 
-  function togglePunch() {
-    if (punchedIn) {
+  async function togglePunch() {
+    if (!myEmployeeId) {
+      alert("Your login isn't linked to an employee record yet — ask an admin to link it in Users.");
+      return;
+    }
+
+    if (punchedIn && openPunchId) {
+      await supabase.from("time_punches").update({ punch_out: new Date().toISOString() }).eq("id", openPunchId);
       setPunchedIn(false);
       setPunchTime(null);
       setElapsed(0);
-      // TODO(supabase): insert/close a row in a `time_entries` table
-      // (Time module — not yet spec'd or migrated).
+      setOpenPunchId(null);
     } else {
-      setPunchedIn(true);
-      setPunchTime(new Date());
+      const { data } = await supabase.from("time_punches").insert({ employee_id: myEmployeeId }).select("id, punch_in").single();
+      if (data) {
+        setOpenPunchId(data.id);
+        setPunchedIn(true);
+        setPunchTime(new Date(data.punch_in));
+      }
     }
   }
 
