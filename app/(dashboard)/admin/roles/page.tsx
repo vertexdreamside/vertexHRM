@@ -1,217 +1,290 @@
 "use client";
 
-import { useState } from "react";
-import { Pencil, Plus, ShieldCheck, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Pencil, Plus, ShieldCheck, X, Loader2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
-import { MODULES, ROLE_SEED, type AppRole } from "@/lib/roleSeedData";
+import { createClient } from "@/lib/supabase/client";
+import { MODULES } from "@/lib/roleSeedData";
 import type { ModulePermission } from "@/lib/types";
 
-const ACTIONS: (keyof ModulePermission)[] = [
-  "view",
-  "add",
-  "edit",
-  "delete",
-  "approve"
-];
+interface RoleRow {
+  id: string;
+  name: string;
+  description: string;
+  isSystem: boolean;
+  userCount: number;
+  permissions: Record<string, ModulePermission>;
+}
 
+const ACTIONS: (keyof ModulePermission)[] = ["view", "add", "edit", "delete", "approve"];
 const ACTION_LABELS: Record<keyof ModulePermission, string> = {
-  view: "View",
-  add: "Add",
-  edit: "Edit",
-  delete: "Delete",
-  approve: "Approve"
+  view: "View", add: "Add", edit: "Edit", delete: "Delete", approve: "Approve"
 };
+const EMPTY_PERMISSION: ModulePermission = { view: false, add: false, edit: false, delete: false, approve: false };
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState<AppRole[]>(ROLE_SEED);
-  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
+  const supabase = createClient();
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [roles, setRoles] = useState<RoleRow[]>([]);
+
+  const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
+  const [draftPermissions, setDraftPermissions] = useState<Record<string, ModulePermission> | null>(null);
+  const [savingPermissions, setSavingPermissions] = useState(false);
+
   const [newRoleOpen, setNewRoleOpen] = useState(false);
-  const [draftPermissions, setDraftPermissions] = useState<Record<
-    string,
-    ModulePermission
-  > | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
-  const editingRole = roles.find((r) => r.id === editingModuleId) ?? null;
+  async function loadAll() {
+    setLoading(true);
+    setLoadError(null);
 
-  function startEditing(role: AppRole) {
+    const [rolesRes, permsRes, usersRes] = await Promise.all([
+      supabase.from("roles").select("id, name, description, is_system").order("name"),
+      supabase.from("role_permissions").select("role_id, module, can_view, can_add, can_edit, can_delete, can_approve"),
+      supabase.from("app_users").select("role_id")
+    ]);
+
+    if (rolesRes.error) {
+      setLoadError(rolesRes.error.message);
+      setLoading(false);
+      return;
+    }
+
+    const userCounts = new Map<string, number>();
+    for (const u of usersRes.data ?? []) {
+      userCounts.set(u.role_id, (userCounts.get(u.role_id) ?? 0) + 1);
+    }
+
+    const permsByRole = new Map<string, Record<string, ModulePermission>>();
+    for (const p of permsRes.data ?? []) {
+      const roleMap = permsByRole.get(p.role_id) ?? {};
+      roleMap[p.module] = {
+        view: p.can_view, add: p.can_add, edit: p.can_edit, delete: p.can_delete, approve: p.can_approve
+      };
+      permsByRole.set(p.role_id, roleMap);
+    }
+
+    const mapped: RoleRow[] = (rolesRes.data ?? []).map((r) => {
+      const rolePerms = permsByRole.get(r.id) ?? {};
+      const permissions: Record<string, ModulePermission> = {};
+      for (const m of MODULES) {
+        permissions[m.key] = rolePerms[m.key] ?? { ...EMPTY_PERMISSION };
+      }
+      return {
+        id: r.id,
+        name: r.name,
+        description: r.description ?? "",
+        isSystem: r.is_system,
+        userCount: userCounts.get(r.id) ?? 0,
+        permissions
+      };
+    });
+
+    setRoles(mapped);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const editingRole = roles.find((r) => r.id === editingRoleId) ?? null;
+
+  function startEditing(role: RoleRow) {
     setDraftPermissions(structuredClone(role.permissions));
-    setEditingModuleId(role.id);
+    setEditingRoleId(role.id);
   }
 
   function togglePermission(moduleKey: string, action: keyof ModulePermission) {
     setDraftPermissions((prev) => {
       if (!prev) return prev;
-      return {
-        ...prev,
-        [moduleKey]: {
-          ...prev[moduleKey],
-          [action]: !prev[moduleKey][action]
-        }
-      };
+      return { ...prev, [moduleKey]: { ...prev[moduleKey], [action]: !prev[moduleKey][action] } };
     });
   }
 
-  function savePermissions() {
+  async function savePermissions() {
     if (!editingRole || !draftPermissions) return;
-    setRoles((prev) =>
-      prev.map((r) =>
-        r.id === editingRole.id ? { ...r, permissions: draftPermissions } : r
-      )
-    );
-    setEditingModuleId(null);
+    setSavingPermissions(true);
+
+    const rows = MODULES.map((m) => ({
+      role_id: editingRole.id,
+      module: m.key,
+      can_view: draftPermissions[m.key].view,
+      can_add: draftPermissions[m.key].add,
+      can_edit: draftPermissions[m.key].edit,
+      can_delete: draftPermissions[m.key].delete,
+      can_approve: draftPermissions[m.key].approve
+    }));
+
+    const { error } = await supabase.from("role_permissions").upsert(rows, { onConflict: "role_id,module" });
+
+    setSavingPermissions(false);
+    if (error) {
+      alert(`Couldn't save: ${error.message}`);
+      return;
+    }
+    // TODO: write an audit_log row here — action: 'Permission Change'.
+
+    setEditingRoleId(null);
     setDraftPermissions(null);
-    // TODO(supabase): upsert one row per (role_id, module) into
-    // role_permissions — see supabase/migrations/0001_core_schema.sql
-    // and the seed pattern in 0003_seed_role_permissions.sql.
-    // Also write an audit_log entry: action = 'Permission Change'.
+    loadAll();
   }
 
   function cancelEditing() {
-    setEditingModuleId(null);
+    setEditingRoleId(null);
     setDraftPermissions(null);
   }
 
-  function createRole(e: React.FormEvent<HTMLFormElement>) {
+  async function createRole(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    setCreateError(null);
+    setCreating(true);
+
     const form = new FormData(e.currentTarget);
     const name = String(form.get("name"));
     const description = String(form.get("description"));
 
-    const emptyPermissions = Object.fromEntries(
-      MODULES.map((m) => [
-        m.key,
-        { view: false, add: false, edit: false, delete: false, approve: false }
-      ])
-    );
+    const { data: newRole, error: insertError } = await supabase
+      .from("roles")
+      .insert({ name, description, is_system: false })
+      .select("id")
+      .single();
 
-    const newRole: AppRole = {
-      id: crypto.randomUUID(),
-      name,
-      description,
-      isSystem: false,
-      userCount: 0,
-      permissions: emptyPermissions
-    };
-
-    setRoles((prev) => [...prev, newRole]);
-    setNewRoleOpen(false);
-    // TODO(supabase): insert into roles, then insert one zeroed row per
-    // module into role_permissions for this new role_id.
-  }
-
-  function deleteRole(role: AppRole) {
-    if (role.isSystem) return;
-    if (!confirm(`Delete the "${role.name}" role? Users with this role keep their account but lose all access until reassigned.`)) {
+    if (insertError || !newRole) {
+      setCreateError(insertError?.message ?? "Failed to create role");
+      setCreating(false);
       return;
     }
-    setRoles((prev) => prev.filter((r) => r.id !== role.id));
-    // TODO(supabase): supabase.from('roles').delete().eq('id', role.id)
-    // (role_permissions rows cascade via the FK in migration 0001)
+
+    const zeroedRows = MODULES.map((m) => ({
+      role_id: newRole.id,
+      module: m.key,
+      can_view: false, can_add: false, can_edit: false, can_delete: false, can_approve: false
+    }));
+    const { error: permsError } = await supabase.from("role_permissions").insert(zeroedRows);
+    if (permsError) {
+      setCreateError(permsError.message);
+      setCreating(false);
+      return;
+    }
+
+    setCreating(false);
+    setNewRoleOpen(false);
+    loadAll();
+  }
+
+  async function deleteRole(role: RoleRow) {
+    if (role.isSystem) return;
+    if (role.userCount > 0) {
+      alert(`Can't delete "${role.name}" — ${role.userCount} user(s) still have this role. Reassign them first.`);
+      return;
+    }
+    if (!confirm(`Delete the "${role.name}" role?`)) return;
+
+    const { error } = await supabase.from("roles").delete().eq("id", role.id);
+    if (error) {
+      alert(`Couldn't delete: ${error.message}`);
+      return;
+    }
+    loadAll();
   }
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-medium text-ink">
-            Roles &amp; Permissions
-          </h1>
+          <h1 className="font-display text-2xl font-medium text-ink">Roles &amp; Permissions</h1>
           <p className="mt-1 text-sm text-ink-muted">
-            What each role can see and do, per module. The starter set below
-            comes from the Access Levels doc — edit freely except the two
-            system roles.
+            What each role can see and do, per module — live from Supabase.
           </p>
         </div>
         <button
           type="button"
           onClick={() => setNewRoleOpen(true)}
-          className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"
         >
           <Plus size={16} /> Add role
         </button>
       </div>
 
+      {loadError && (
+        <div className="mb-4 rounded-card border border-state-danger/30 bg-state-dangerBg p-4 text-sm text-state-danger">
+          Couldn&apos;t load roles: {loadError}
+        </div>
+      )}
+
       <div className="overflow-hidden rounded-card border border-surface-border bg-white">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-ink-soft">
-            <tr>
-              <th className="px-4 py-3">Role name</th>
-              <th className="px-4 py-3">Description</th>
-              <th className="px-4 py-3">Users assigned</th>
-              <th className="px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {roles.map((role) => (
-              <tr key={role.id} className="border-t border-surface-border">
-                <td className="px-4 py-3 font-medium text-ink">
-                  <div className="flex items-center gap-2">
-                    {role.name}
-                    {role.isSystem && (
-                      <span
-                        title="System role — cannot be deleted"
-                        className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700"
-                      >
-                        <ShieldCheck size={12} /> System
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-ink-muted">{role.description}</td>
-                <td className="px-4 py-3 text-ink-muted">{role.userCount}</td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-end gap-1">
-                    <button
-                      onClick={() => startEditing(role)}
-                      aria-label={`Edit permissions for ${role.name}`}
-                      className="rounded-md p-1.5 text-ink-soft hover:bg-surface-subtle hover:text-brand-700"
-                    >
-                      <Pencil size={16} />
-                    </button>
-                    {!role.isSystem && (
-                      <button
-                        onClick={() => deleteRole(role)}
-                        aria-label={`Delete ${role.name}`}
-                        className="rounded-md p-1.5 text-ink-soft hover:bg-surface-subtle hover:text-state-danger"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                </td>
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 px-4 py-16 text-sm text-ink-soft">
+            <Loader2 size={16} className="animate-spin" /> Loading roles…
+          </div>
+        ) : (
+          <table className="w-full text-left text-sm">
+            <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-ink-soft">
+              <tr>
+                <th className="px-4 py-3">Role name</th>
+                <th className="px-4 py-3">Description</th>
+                <th className="px-4 py-3">Users assigned</th>
+                <th className="px-4 py-3 text-right">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {roles.map((role) => (
+                <tr key={role.id} className="border-t border-surface-border">
+                  <td className="px-4 py-3 font-medium text-ink">
+                    <div className="flex items-center gap-2">
+                      {role.name}
+                      {role.isSystem && (
+                        <span title="System role — cannot be deleted" className="inline-flex items-center gap-1 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                          <ShieldCheck size={12} /> System
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-ink-muted">{role.description}</td>
+                  <td className="px-4 py-3 text-ink-muted">{role.userCount}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => startEditing(role)} aria-label={`Edit permissions for ${role.name}`} className="rounded-md p-1.5 text-ink-soft hover:bg-surface-subtle hover:text-brand-700">
+                        <Pencil size={16} />
+                      </button>
+                      {!role.isSystem && (
+                        <button onClick={() => deleteRole(role)} aria-label={`Delete ${role.name}`} className="rounded-md p-1.5 text-ink-soft hover:bg-surface-subtle hover:text-state-danger">
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Permission matrix — expands inline below the table rather than a
-          cramped modal, since it's a 16-module x 5-action grid. */}
       {editingRole && draftPermissions && (
         <div className="mt-4 rounded-card border border-brand-200 bg-white p-5">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="font-display text-lg font-medium text-ink">
-                {editingRole.name} — permissions
-              </h2>
+              <h2 className="font-display text-lg font-medium text-ink">{editingRole.name} — permissions</h2>
               <p className="text-sm text-ink-muted">
-                Approve applies within a person&apos;s own department/team,
-                enforced separately in each module — this grid only controls
-                whether the role can approve at all.
+                Approve applies within a person&apos;s own department/team, enforced separately in each module.
               </p>
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={cancelEditing}
-                className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle"
-              >
+              <button onClick={cancelEditing} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
                 Cancel
               </button>
               <button
                 onClick={savePermissions}
-                className="rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                disabled={savingPermissions}
+                className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60"
               >
-                Save
+                {savingPermissions && <Loader2 size={14} className="animate-spin" />} Save
               </button>
             </div>
           </div>
@@ -222,9 +295,7 @@ export default function RolesPage() {
                 <tr>
                   <th className="px-3 py-2">Module</th>
                   {ACTIONS.map((action) => (
-                    <th key={action} className="px-3 py-2 text-center">
-                      {ACTION_LABELS[action]}
-                    </th>
+                    <th key={action} className="px-3 py-2 text-center">{ACTION_LABELS[action]}</th>
                   ))}
                 </tr>
               </thead>
@@ -254,44 +325,21 @@ export default function RolesPage() {
         <Modal title="Add role" onClose={() => setNewRoleOpen(false)}>
           <form onSubmit={createRole} className="space-y-4">
             <div>
-              <label htmlFor="name" className="mb-1 block text-sm font-medium text-ink">
-                Role name *
-              </label>
-              <input
-                id="name"
-                name="name"
-                required
-                className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500"
-              />
+              <label htmlFor="name" className="mb-1 block text-sm font-medium text-ink">Role name *</label>
+              <input id="name" name="name" required className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
             </div>
             <div>
-              <label htmlFor="description" className="mb-1 block text-sm font-medium text-ink">
-                Description
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                rows={3}
-                className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500"
-              />
+              <label htmlFor="description" className="mb-1 block text-sm font-medium text-ink">Description</label>
+              <textarea id="description" name="description" rows={3} className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
             </div>
-            <p className="text-xs text-ink-soft">
-              Every module starts with no access — set permissions after
-              creating the role.
-            </p>
+            <p className="text-xs text-ink-soft">Every module starts with no access — set permissions after creating the role.</p>
+            {createError && <p className="text-sm text-state-danger">{createError}</p>}
             <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setNewRoleOpen(false)}
-                className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle"
-              >
+              <button type="button" onClick={() => setNewRoleOpen(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
                 Cancel
               </button>
-              <button
-                type="submit"
-                className="rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"
-              >
-                Save
+              <button type="submit" disabled={creating} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+                {creating && <Loader2 size={14} className="animate-spin" />} Save
               </button>
             </div>
           </form>
