@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Clock3, ListChecks, Send, Check, X as XIcon, MapPin, FolderKanban, FileBarChart, Plus, LogIn, LogOut, Loader2 } from "lucide-react";
+import { Clock3, Send, Check, X as XIcon, Plus, LogIn, LogOut, ChevronDown, Loader2 } from "lucide-react";
 import { clsx } from "clsx";
 import { createClient } from "@/lib/supabase/client";
 
@@ -23,20 +23,6 @@ const statusStyles: Record<string, string> = {
   Rejected: "bg-state-dangerBg text-state-danger"
 };
 
-const TABS = [
-  { key: "mytimesheet", label: "Timesheets", icon: Clock3 },
-  { key: "employeetimesheets", label: "Employee Timesheets", icon: ListChecks },
-  { key: "attendance", label: "Attendance", icon: MapPin },
-  { key: "projects", label: "Project Info", icon: FolderKanban },
-  { key: "reports", label: "Reports", icon: FileBarChart }
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
-
-interface ProjectRow { id: string; name: string }
-interface TimesheetRow { id: string; employee_id: string; week_starting: string; status: string; employees: { full_name: string } | { full_name: string }[] | null }
-interface EntryRow { id: string; timesheet_id: string; project_id: string; day_of_week: string; hours: number }
-
 function one<T>(v: T | T[] | null): T | null {
   return Array.isArray(v) ? v[0] ?? null : v;
 }
@@ -45,19 +31,94 @@ function LoadingBlock() {
   return <div className="flex items-center gap-2 py-16 text-sm text-ink-soft"><Loader2 size={16} className="animate-spin" /> Loading…</div>;
 }
 
+// ---------------------------------------------------------------------
+// Nav — Timesheets, Attendance, Reports, and Project Info each expand
+// into their own sub-items, matching the reference exactly.
+// ---------------------------------------------------------------------
+type ViewKey =
+  | "timesheets-my" | "timesheets-employee"
+  | "attendance-my" | "attendance-punch" | "attendance-employee" | "attendance-config"
+  | "reports-project" | "reports-employee" | "reports-attendance"
+  | "projectinfo-customers" | "projectinfo-projects";
+
+const NAV_ITEMS: { label: string; dropdown: { label: string; view: ViewKey }[] }[] = [
+  { label: "Timesheets", dropdown: [{ label: "My Timesheets", view: "timesheets-my" }, { label: "Employee Timesheets", view: "timesheets-employee" }] },
+  { label: "Attendance", dropdown: [
+    { label: "My Records", view: "attendance-my" },
+    { label: "Punch In/Out", view: "attendance-punch" },
+    { label: "Employee Records", view: "attendance-employee" },
+    { label: "Configuration", view: "attendance-config" }
+  ] },
+  { label: "Reports", dropdown: [
+    { label: "Project Reports", view: "reports-project" },
+    { label: "Employee Reports", view: "reports-employee" },
+    { label: "Attendance Summary", view: "reports-attendance" }
+  ] },
+  { label: "Project Info", dropdown: [{ label: "Customers", view: "projectinfo-customers" }, { label: "Projects", view: "projectinfo-projects" }] }
+];
+
+function TimeNav({ active, onChange }: { active: ViewKey; onChange: (v: ViewKey) => void }) {
+  const [openLabel, setOpenLabel] = useState<string | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpenLabel(null);
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, []);
+
+  return (
+    <div ref={ref} className="mb-6 flex flex-wrap gap-1.5 border-b border-surface-border pb-4">
+      {NAV_ITEMS.map((item) => {
+        const isActiveGroup = item.dropdown.some((d) => d.view === active);
+        return (
+          <div key={item.label} className="relative">
+            <button onClick={() => setOpenLabel((v) => (v === item.label ? null : item.label))} className={clsx("flex items-center gap-1 rounded-full px-3.5 py-1.5 text-sm font-medium transition-colors", isActiveGroup ? "bg-brand-gradient text-white" : "bg-surface-subtle text-ink-muted hover:bg-brand-50 hover:text-brand-700")}>
+              {item.label} <ChevronDown size={14} className={clsx("transition-transform", openLabel === item.label && "rotate-180")} />
+            </button>
+            {openLabel === item.label && (
+              <div className="absolute left-0 z-20 mt-1.5 w-52 rounded-card border border-surface-border bg-white py-1.5 shadow-lg">
+                {item.dropdown.map((d) => (
+                  <button key={d.view} onClick={() => { onChange(d.view); setOpenLabel(null); }} className={clsx("block w-full px-4 py-2 text-left text-sm hover:bg-surface-subtle", active === d.view ? "font-medium text-brand-700" : "text-ink-muted")}>
+                    {d.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function NotBuilt({ note }: { note: string }) {
+  return <div className="max-w-2xl rounded-card border border-surface-border bg-white p-6 text-sm text-ink-muted">Not built yet — {note}</div>;
+}
+
+interface ProjectRow { id: string; name: string }
+interface CustomerRow { id: string; name: string }
+interface TimesheetRow { id: string; employee_id: string; week_starting: string; status: string; employees: { full_name: string } | { full_name: string }[] | null }
+interface EntryRow { id: string; timesheet_id: string; project_id: string; day_of_week: string; hours: number }
+interface PunchRow { id: string; employee_id: string; punch_in: string; punch_out: string | null; employees: { full_name: string } | { full_name: string }[] | null }
+
 function TimePageInner() {
   const supabase = createClient();
   const searchParams = useSearchParams();
-  const [activeTab, setActiveTab] = useState<TabKey>((searchParams.get("tab") as TabKey) || "mytimesheet");
+  const [view, setView] = useState<ViewKey>((searchParams.get("tab") as ViewKey) || "timesheets-my");
 
   const [loading, setLoading] = useState(true);
   const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
   const [projects, setProjects] = useState<ProjectRow[]>([]);
+  const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [timesheets, setTimesheets] = useState<TimesheetRow[]>([]);
   const [entries, setEntries] = useState<EntryRow[]>([]);
   const [myTimesheetId, setMyTimesheetId] = useState<string | null>(null);
   const [addingProject, setAddingProject] = useState(false);
-  const [punches, setPunches] = useState<{ id: string; employee_id: string; punch_in: string; punch_out: string | null; employees: { full_name: string } | { full_name: string }[] | null }[]>([]);
+  const [addingCustomer, setAddingCustomer] = useState(false);
+  const [punches, setPunches] = useState<PunchRow[]>([]);
 
   const weekStarting = mondayOf(new Date());
 
@@ -71,14 +132,16 @@ function TimePageInner() {
     }
     setMyEmployeeId(employeeId);
 
-    const [projectsRes, timesheetsRes, punchesRes] = await Promise.all([
+    const [projectsRes, customersRes, timesheetsRes, punchesRes] = await Promise.all([
       supabase.from("timesheet_projects").select("id, name").order("name"),
+      supabase.from("timesheet_customers").select("id, name").order("name"),
       supabase.from("timesheets").select("id, employee_id, week_starting, status, employees(full_name)").order("week_starting", { ascending: false }),
       supabase.from("time_punches").select("id, employee_id, punch_in, punch_out, employees(full_name)").order("punch_in", { ascending: false }).limit(50)
     ]);
     setProjects((projectsRes.data as ProjectRow[]) ?? []);
+    setCustomers((customersRes.data as CustomerRow[]) ?? []);
     setTimesheets((timesheetsRes.data as TimesheetRow[]) ?? []);
-    setPunches(punchesRes.data ?? []);
+    setPunches((punchesRes.data as unknown as PunchRow[]) ?? []);
 
     let mine = (timesheetsRes.data as TimesheetRow[] | null)?.find((t) => t.employee_id === employeeId && t.week_starting === weekStarting) ?? null;
 
@@ -133,23 +196,18 @@ function TimePageInner() {
   const rowTotal = (projectId: string) => DAYS.reduce((sum, d) => sum + hoursFor(projectId, d), 0);
   const grandTotal = useMemo(() => myEntries.reduce((sum, e) => sum + e.hours, 0), [myEntries]);
   const teamTimesheets = timesheets.filter((t) => t.employee_id !== myEmployeeId);
+  const myPunches = punches.filter((p) => p.employee_id === myEmployeeId);
 
   return (
     <div>
       <h1 className="font-display text-2xl font-medium text-ink">Time</h1>
-      <p className="mt-1 text-sm text-ink-muted">Weekly timesheets — live from Supabase. Daily punch in/out lives on the Dashboard.</p>
+      <p className="mt-1 text-sm text-ink-muted">Weekly timesheets and attendance — live from Supabase.</p>
 
-      <div className="mt-6 flex flex-wrap gap-1 border-b border-surface-border">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setActiveTab(key)} className={clsx("flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors", activeTab === key ? "border-brand-500 text-brand-700" : "border-transparent text-ink-muted hover:text-ink")}>
-            <Icon size={16} /> {label}
-          </button>
-        ))}
-      </div>
+      <TimeNav active={view} onChange={setView} />
 
-      {loading ? <div className="mt-6"><LoadingBlock /></div> : (
-        <div className="mt-6">
-          {activeTab === "mytimesheet" && (
+      {loading ? <LoadingBlock /> : (
+        <div>
+          {view === "timesheets-my" && (
             <div>
               {!myEmployeeId && (
                 <div className="mb-4 rounded-card border border-state-warning/30 bg-state-warningBg p-4 text-sm text-state-warning">
@@ -189,7 +247,7 @@ function TimePageInner() {
                   </div>
                   {myTimesheet.status === "Draft" && (
                     <div className="mt-4 flex justify-end">
-                      <button onClick={submitTimesheet} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Send size={16} /> Submit timesheet</button>
+                      <button onClick={submitTimesheet} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Send size={16} /> Submit timesheet</button>
                     </div>
                   )}
                 </>
@@ -197,7 +255,7 @@ function TimePageInner() {
             </div>
           )}
 
-          {activeTab === "employeetimesheets" && (
+          {view === "timesheets-employee" && (
             <div className="overflow-hidden rounded-card border border-surface-border bg-white">
               <table className="w-full text-left text-sm">
                 <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-ink-soft"><tr><th className="px-4 py-3">Employee</th><th className="px-4 py-3">Week of</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
@@ -217,15 +275,39 @@ function TimePageInner() {
                       </td>
                     </tr>
                   ))}
-                  {teamTimesheets.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-sm text-ink-soft">No timesheets submitted yet.</td></tr>}
+                  {teamTimesheets.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-sm text-ink-soft">No Records Found</td></tr>}
                 </tbody>
               </table>
             </div>
           )}
 
-          {activeTab === "attendance" && (
+          {view === "attendance-my" && (
+            <div className="overflow-hidden rounded-card border border-surface-border bg-white">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-ink-soft"><tr><th className="px-4 py-3">Punch in</th><th className="px-4 py-3">Punch out</th></tr></thead>
+                <tbody>
+                  {myPunches.map((p) => (
+                    <tr key={p.id} className="border-t border-surface-border">
+                      <td className="px-4 py-3 text-ink-muted"><LogIn size={12} className="mr-1 inline text-state-success" />{new Date(p.punch_in).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-ink-muted">{p.punch_out ? <><LogOut size={12} className="mr-1 inline text-state-danger" />{new Date(p.punch_out).toLocaleString()}</> : "Still punched in"}</td>
+                    </tr>
+                  ))}
+                  {myPunches.length === 0 && <tr><td colSpan={2} className="px-4 py-10 text-center text-sm text-ink-soft">No Records Found</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {view === "attendance-punch" && (
+            <div className="max-w-2xl rounded-card border border-surface-border bg-white p-6 text-center">
+              <Clock3 size={28} className="mx-auto mb-2 text-brand-700" />
+              <p className="text-sm text-ink-muted">Punching in/out lives on the Dashboard&apos;s Time at Work widget, where the live timer is.</p>
+            </div>
+          )}
+
+          {view === "attendance-employee" && (
             <div>
-              <p className="mb-3 max-w-2xl text-sm text-ink-muted">A log of punch in/out records from the Dashboard&apos;s Time at Work widget.</p>
+              <p className="mb-3 max-w-2xl text-sm text-ink-muted">A log of everyone&apos;s punch in/out records.</p>
               <div className="overflow-hidden rounded-card border border-surface-border bg-white">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-ink-soft"><tr><th className="px-4 py-3">Employee</th><th className="px-4 py-3">Punch in</th><th className="px-4 py-3">Punch out</th></tr></thead>
@@ -237,20 +319,53 @@ function TimePageInner() {
                         <td className="px-4 py-3 text-ink-muted">{p.punch_out ? <><LogOut size={12} className="mr-1 inline text-state-danger" />{new Date(p.punch_out).toLocaleString()}</> : "Still punched in"}</td>
                       </tr>
                     ))}
-                    {punches.length === 0 && <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-ink-soft">No punches recorded yet.</td></tr>}
+                    {punches.length === 0 && <tr><td colSpan={3} className="px-4 py-10 text-center text-sm text-ink-soft">No Records Found</td></tr>}
                   </tbody>
                 </table>
               </div>
             </div>
           )}
 
-          {activeTab === "projects" && (
+          {view === "attendance-config" && <NotBuilt note="attendance rules (grace periods, rounding, overtime thresholds) aren't defined yet." />}
+          {view === "reports-project" && <NotBuilt note="hours by project is the natural first report here." />}
+          {view === "reports-employee" && <NotBuilt note="hours by employee across a date range." />}
+          {view === "reports-attendance" && <NotBuilt note="punctuality/attendance summary across the organization." />}
+
+          {view === "projectinfo-customers" && (
             <div>
               <div className="mb-3 flex justify-end">
-                <button onClick={() => setAddingProject(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add project</button>
+                <button onClick={() => setAddingCustomer(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add customer</button>
+              </div>
+              <div className="overflow-hidden rounded-card border border-surface-border bg-white">
+                {customers.map((c, i) => <div key={c.id} className={clsx("px-4 py-3 text-sm text-ink", i > 0 && "border-t border-surface-border")}>{c.name}</div>)}
+                {customers.length === 0 && <p className="px-4 py-10 text-center text-sm text-ink-soft">No Records Found</p>}
+              </div>
+              {addingCustomer && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = new FormData(e.currentTarget);
+                    await supabase.from("timesheet_customers").insert({ name: form.get("name") });
+                    setAddingCustomer(false);
+                    load();
+                  }}
+                  className="mt-4 flex gap-2 rounded-card border border-surface-border bg-white p-4"
+                >
+                  <input name="name" required placeholder="Customer name" className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
+                  <button type="submit" className="rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">Save</button>
+                </form>
+              )}
+            </div>
+          )}
+
+          {view === "projectinfo-projects" && (
+            <div>
+              <div className="mb-3 flex justify-end">
+                <button onClick={() => setAddingProject(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add project</button>
               </div>
               <div className="overflow-hidden rounded-card border border-surface-border bg-white">
                 {projects.map((p, i) => <div key={p.id} className={clsx("px-4 py-3 text-sm text-ink", i > 0 && "border-t border-surface-border")}>{p.name}</div>)}
+                {projects.length === 0 && <p className="px-4 py-10 text-center text-sm text-ink-soft">No Records Found</p>}
               </div>
               {addingProject && (
                 <form
@@ -264,15 +379,9 @@ function TimePageInner() {
                   className="mt-4 flex gap-2 rounded-card border border-surface-border bg-white p-4"
                 >
                   <input name="name" required placeholder="Project name" className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
-                  <button type="submit" className="rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90">Save</button>
+                  <button type="submit" className="rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">Save</button>
                 </form>
               )}
-            </div>
-          )}
-
-          {activeTab === "reports" && (
-            <div className="max-w-2xl rounded-card border border-surface-border bg-white p-6 text-sm text-ink-muted">
-              Not built yet — hours by project and timesheet submission compliance are the natural first reports here.
             </div>
           )}
         </div>
