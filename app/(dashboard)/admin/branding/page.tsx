@@ -10,9 +10,9 @@ import type { BrandingSettings } from "@/lib/types";
 // match your uploaded logo files — this is the "factory" state Reset to
 // Default returns to.
 const DEFAULTS: BrandingSettings = {
-  primaryColor: "#27272a",
+  primaryColor: "#2f3fd9",
   primaryFontColor: "#18181b",
-  primaryGradientColor1: "#09090b",
+  primaryGradientColor1: "#7b3fd9",
   logoUrl: "/vertexhrm-logo-primary.svg",
   loginBannerUrl: null,
   socialPreviewEnabled: true
