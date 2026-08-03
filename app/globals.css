@@ -10,8 +10,8 @@
      badges) uses a neutral zinc scale instead. Corporate Branding (§4)
      can still override these at runtime for anyone who wants the
      purple back — see app/(dashboard)/admin/branding/page.tsx. */
-  --brand-start: #2f3fd9;
-  --brand-end: #7b3fd9;
+  --brand-start: #1668d6;
+  --brand-end: #4f8fea;
   --brand-ink: #18181b;
 }
 
