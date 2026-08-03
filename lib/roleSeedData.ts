@@ -9,6 +9,12 @@ export const MODULES: { key: string; label: string }[] = [
   { key: "employees", label: "Employees / Job / Pay Grades" },
   { key: "organization", label: "Organization" },
   { key: "leave", label: "Leave" },
+  // Manually added (not part of the generator run) — the Admin Ops
+  // "front door" permission from migration 0035. Sits above the
+  // existing documents/requests/procurement/etc. rows: this is
+  // whether a role can enter the Admin Ops space at all; those rows
+  // still govern what they see once inside.
+  { key: "admin_ops", label: "Admin Operations (space access)" },
   { key: "documents", label: "Documents" },
   { key: "requests", label: "Requests" },
   { key: "procurement", label: "Procurement" },
