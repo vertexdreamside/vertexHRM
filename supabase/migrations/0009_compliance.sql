@@ -54,15 +54,24 @@ create table work_permits (
   employee_id uuid references employees(id),
   nationality text,
   gop_number text,
-  expiry_date date not null,
-  status text generated always as (
-    case
-      when expiry_date < current_date then 'Expired'
-      when expiry_date < current_date + interval '90 days' then 'Pending Renewal'
-      else 'Valid'
-    end
-  ) stored
+  expiry_date date not null
 );
+
+-- Status can't be a `generated ... stored` column on the table itself —
+-- Postgres requires generated-column expressions to be IMMUTABLE, and
+-- current_date isn't (it changes daily). A view has no such
+-- restriction and re-evaluates on every query, which gives the same
+-- "database computes it, nothing can drift" property without the
+-- storage-layer constraint.
+create view work_permits_with_status as
+select
+  wp.*,
+  case
+    when wp.expiry_date < current_date then 'Expired'
+    when wp.expiry_date < current_date + interval '90 days' then 'Pending Renewal'
+    else 'Valid'
+  end as status
+from work_permits wp;
 
 alter table data_retention_rules enable row level security;
 alter table data_subject_requests enable row level security;
@@ -74,3 +83,8 @@ create policy "authenticated read data_retention_rules" on data_retention_rules 
 create policy "authenticated read data_subject_requests" on data_subject_requests for select using (auth.role() = 'authenticated');
 create policy "authenticated read leave_type_defaults" on leave_type_defaults for select using (auth.role() = 'authenticated');
 create policy "authenticated read work_permits" on work_permits for select using (auth.role() = 'authenticated');
+
+-- Views need an explicit grant on the view object itself — the
+-- underlying table's RLS policy above still applies to what rows come
+-- through, this just allows querying the view at all.
+grant select on work_permits_with_status to authenticated;
