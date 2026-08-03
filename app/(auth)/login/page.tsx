@@ -51,79 +51,11 @@ export default function LoginPage() {
   }
 
   return (
-    // One continuous gradient across the whole page rather than a hard
-    // split panel — the login card floats on top of it instead of
-    // sitting in a separate white half, so the color reads as merged
-    // behind the field rather than stopping at an edge. This also
-    // drops the dependency on the uploaded background image entirely,
-    // since that file wasn't reliably rendering — bg-brand-gradient is
-    // pure CSS and can't fail to load.
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brand-gradient p-6">
-      {/* Soft decorative glow shapes for a bit of life behind the card,
-          purely CSS, no image dependency. */}
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" aria-hidden="true" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" aria-hidden="true" />
 
       <div className="relative z-10 w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="rounded-2xl bg-white/15 p-4 shadow-lg backdrop-blur-md">
-            <Image src="/vertexhrm-logo-reversed.svg" alt="vertexhrm" width={180} height={54} priority />
-          </div>
-          <p className="mt-4 text-sm text-white/80">
-            Vertex HRM &mdash; a product of <span className="font-medium">VERTEX</span>
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-white/95 p-8 shadow-xl backdrop-blur">
-          <h1 className="font-display text-2xl font-medium text-ink">Sign in</h1>
-
-          <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <div>
-              <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                autoComplete="username"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-md border border-surface-border px-3 py-2 text-sm text-ink focus:border-brand-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="mb-1 block text-sm font-medium text-ink">
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-md border border-surface-border px-3 py-2 text-sm text-ink focus:border-brand-500"
-              />
-            </div>
-
-            {error && (
-              <p role="alert" className="text-sm text-state-danger">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-md bg-state-success py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-            >
-              {loading ? "Signing in..." : "Sign in"}
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-}
+            <Image src="/vertexhrm-logo-reversed.sv
