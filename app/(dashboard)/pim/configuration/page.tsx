@@ -121,7 +121,7 @@ function PimConfigurationPageInner() {
             </div>
             <button
               disabled={!importFile}
-              className="rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+              className="rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
             >
               Preview import
             </button>
@@ -143,7 +143,7 @@ function PimConfigurationPageInner() {
                   setReportingMethods((prev) => [...prev, { id: crypto.randomUUID(), name: newMethod.trim() }]);
                   setNewMethod("");
                 }}
-                className="flex items-center gap-1.5 rounded-md bg-brand-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+                className="flex items-center gap-1.5 rounded-md bg-state-success px-3 py-2 text-sm font-medium text-white hover:opacity-90"
               >
                 <Plus size={14} /> Add
               </button>
@@ -171,7 +171,7 @@ function PimConfigurationPageInner() {
                   setTerminationReasons((prev) => [...prev, { id: crypto.randomUUID(), name: newReason.trim() }]);
                   setNewReason("");
                 }}
-                className="flex items-center gap-1.5 rounded-md bg-brand-gradient px-3 py-2 text-sm font-medium text-white hover:opacity-90"
+                className="flex items-center gap-1.5 rounded-md bg-state-success px-3 py-2 text-sm font-medium text-white hover:opacity-90"
               >
                 <Plus size={14} /> Add
               </button>
