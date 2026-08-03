@@ -1,41 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Bell, Search, Info, LifeBuoy, KeyRound, LogOut, ChevronDown,
-  LayoutDashboard, ShieldCheck, IdCard, Contact, CalendarDays, Clock3,
-  UserSearch, UserCircle, Target, Receipt, Wrench, Megaphone, FileCheck2, X
-} from "lucide-react";
+import { Bell, Info, LifeBuoy, KeyRound, LogOut, ChevronDown } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
-
-// Every real destination in the app — the search overlay filters this
-// client-side. Not a full-text search of records (that would need a
-// server-side index), but a genuine "jump to" rather than a decorative
-// input that did nothing.
-const DESTINATIONS = [
-  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { label: "Admin — Users", href: "/admin/users", icon: ShieldCheck },
-  { label: "Admin — Roles & Permissions", href: "/admin/roles", icon: ShieldCheck },
-  { label: "Admin — Organization", href: "/admin/organization", icon: ShieldCheck },
-  { label: "Admin — Job Section", href: "/admin/job-section", icon: ShieldCheck },
-  { label: "Admin — Qualifications", href: "/admin/qualifications", icon: ShieldCheck },
-  { label: "Admin — Corporate Branding", href: "/admin/branding", icon: ShieldCheck },
-  { label: "Admin — Configuration", href: "/admin/configuration", icon: ShieldCheck },
-  { label: "Admin — Compliance", href: "/admin/compliance", icon: ShieldCheck },
-  { label: "PIM", href: "/pim", icon: IdCard },
-  { label: "Directory", href: "/directory", icon: Contact },
-  { label: "Leave", href: "/leave", icon: CalendarDays },
-  { label: "Time", href: "/time", icon: Clock3 },
-  { label: "Recruitment", href: "/recruitment", icon: UserSearch },
-  { label: "My Info", href: "/myinfo", icon: UserCircle },
-  { label: "Performance", href: "/performance", icon: Target },
-  { label: "Maintenance", href: "/maintenance", icon: Wrench },
-  { label: "Claims", href: "/claims", icon: Receipt },
-  { label: "Buzz", href: "/buzz", icon: Megaphone },
-  { label: "Admin Operations", href: "/ops/dashboard", icon: FileCheck2 }
-];
 
 interface PendingCounts {
   leave: number;
@@ -43,6 +12,8 @@ interface PendingCounts {
   claims: number;
 }
 
+// Search lives in the Sidebar now (under the logo), not here — see
+// components/layout/Sidebar.tsx.
 export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: string | null }) {
   const router = useRouter();
   const supabase = createClient();
@@ -52,8 +23,6 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [changePasswordError, setChangePasswordError] = useState<string | null>(null);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
   const [pending, setPending] = useState<PendingCounts | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -68,26 +37,7 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Keyboard shortcut — Cmd/Ctrl+K opens search, matching the
-  // "on top of everything" ask: a real overlay, not an inline box.
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-      if (e.key === "Escape") setSearchOpen(false);
-    }
-    document.addEventListener("keydown", handleKey);
-    return () => document.removeEventListener("keydown", handleKey);
-  }, []);
-
   async function loadPending() {
-    // Real counts, not decoration — organization-wide "Submitted"
-    // items awaiting a decision. Not scoped per-manager yet (no
-    // reporting-line hierarchy wired), so this is "things that need
-    // attention" rather than "things assigned to you specifically" —
-    // noted in the panel copy rather than overclaiming.
     const [leaveRes, timesheetsRes, claimsRes] = await Promise.all([
       supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "Pending"),
       supabase.from("timesheets").select("id", { count: "exact", head: true }).eq("status", "Submitted"),
@@ -105,27 +55,11 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
     if (!pending) loadPending();
   }
 
-  const filteredDestinations = useMemo(() => {
-    if (!searchQuery.trim()) return DESTINATIONS;
-    const q = searchQuery.toLowerCase();
-    return DESTINATIONS.filter((d) => d.label.toLowerCase().includes(q));
-  }, [searchQuery]);
-
   const totalPending = pending ? pending.leave + pending.timesheets + pending.claims : 0;
-
   const initials = userName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-surface-border bg-white px-6">
-      <button
-        onClick={() => setSearchOpen(true)}
-        className="flex items-center gap-2 rounded-full border border-surface-border px-3 py-2 text-sm text-ink-soft hover:bg-surface-subtle"
-      >
-        <Search size={16} aria-hidden="true" />
-        <span className="hidden sm:inline">Search...</span>
-        <kbd className="hidden rounded border border-surface-border px-1.5 py-0.5 text-xs text-ink-soft sm:inline">⌘K</kbd>
-      </button>
-
+    <header className="flex h-16 items-center justify-end border-b border-surface-border bg-white px-6">
       <div className="flex items-center gap-4">
         <div className="relative" ref={notifRef}>
           <button
@@ -133,7 +67,7 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
             onClick={openNotifications}
             aria-label="Notifications"
             aria-expanded={notifOpen}
-            className="relative rounded-full p-2 text-ink-muted hover:bg-surface-subtle"
+            className="relative rounded-full p-2 text-ink-muted transition-transform hover:scale-110 hover:bg-surface-subtle"
           >
             <Bell size={18} aria-hidden="true" />
             {totalPending > 0 && (
@@ -246,42 +180,6 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
         </div>
       </div>
 
-      {/* Search overlay — genuinely sits on top of everything (fixed,
-          full-viewport), not embedded in the topbar's own layout. */}
-      {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-ink/40 p-4 pt-24" onClick={() => setSearchOpen(false)}>
-          <div className="w-full max-w-lg rounded-card bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2 border-b border-surface-border px-4 py-3">
-              <Search size={18} className="text-ink-soft" />
-              <input
-                autoFocus
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Jump to a module or page..."
-                className="w-full bg-transparent text-sm text-ink focus:outline-none"
-              />
-              <button onClick={() => setSearchOpen(false)} aria-label="Close search" className="rounded-md p-1 text-ink-soft hover:bg-surface-subtle">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="max-h-80 overflow-y-auto py-2">
-              {filteredDestinations.map((d) => (
-                <button
-                  key={d.href}
-                  onClick={() => { router.push(d.href); setSearchOpen(false); setSearchQuery(""); }}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-ink hover:bg-surface-subtle"
-                >
-                  <d.icon size={16} className="text-ink-soft" /> {d.label}
-                </button>
-              ))}
-              {filteredDestinations.length === 0 && (
-                <p className="px-4 py-6 text-center text-sm text-ink-soft">No matching page.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
       {showAbout && (
         <Modal title="About vertexhrm" onClose={() => setShowAbout(false)}>
           <div className="space-y-2 text-sm text-ink-muted">
@@ -330,8 +228,6 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
                 return;
               }
 
-              // Re-verify the current password before allowing the
-              // change — the same check Maintenance's re-auth gate uses.
               const { error: verifyError } = await supabase.auth.signInWithPassword({ email: user.email, password: currentPassword });
               if (verifyError) {
                 setChangingPassword(false);

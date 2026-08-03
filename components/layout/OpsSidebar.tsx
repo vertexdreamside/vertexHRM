@@ -43,7 +43,7 @@ export function OpsSidebar() {
       <button
         onClick={() => setCollapsed((v) => !v)}
         aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute -right-3 top-6 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-white text-ink shadow-md hover:opacity-90"
+        className="absolute -right-3 top-6 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-amber-400 text-ink shadow-md ring-2 ring-white hover:brightness-105"
       >
         <ChevronLeft size={14} className={clsx("transition-transform", collapsed && "rotate-180")} />
       </button>
@@ -66,7 +66,7 @@ export function OpsSidebar() {
               className={clsx(
                 "flex items-center gap-3 rounded-lg px-2.5 py-2 text-sm transition-colors",
                 collapsed && "justify-center px-0",
-                active ? "bg-white font-medium text-brand-700" : "text-white/75 hover:bg-white/10 hover:text-white"
+                active ? "bg-amber-400 font-medium text-ink" : "text-white/75 hover:bg-white/10 hover:text-white"
               )}
             >
               <span className={clsx("flex h-7 w-7 shrink-0 items-center justify-center rounded-md", active ? "bg-brand-50" : "bg-white/10")}>
