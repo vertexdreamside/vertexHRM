@@ -194,7 +194,7 @@ function GeneralInfoTab() {
       {error && <p className="text-sm text-state-danger">{error}</p>}
 
       <div className="flex items-center gap-3 pt-2">
-        <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+        <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
           {saving && <Loader2 size={14} className="animate-spin" />} Save
         </button>
         {saved && <span className="text-sm text-state-success">Saved</span>}
@@ -270,7 +270,7 @@ function LocationsTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           <Plus size={16} /> Add location
         </button>
       </div>
@@ -343,7 +343,7 @@ function LocationsTab() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setEditing(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
                 {saving && <Loader2 size={14} className="animate-spin" />} Save
               </button>
             </div>
@@ -416,7 +416,7 @@ function StructureTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           <Plus size={16} /> Add organization unit
         </button>
       </div>
@@ -447,7 +447,7 @@ function StructureTab() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
                 {saving && <Loader2 size={14} className="animate-spin" />} Save
               </button>
             </div>
@@ -512,7 +512,7 @@ function HolidaysTab() {
         Seeded with Seychelles public holidays per HRM Admin spec §6.3 — review yearly, dates shift.
       </p>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           <Plus size={16} /> Add holiday
         </button>
       </div>
@@ -568,7 +568,7 @@ function HolidaysTab() {
             </label>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
                 {saving && <Loader2 size={14} className="animate-spin" />} Save
               </button>
             </div>
