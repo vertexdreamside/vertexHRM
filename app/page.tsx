@@ -133,7 +133,7 @@ function PimPageInner() {
           <h1 className="font-display text-2xl font-medium text-ink">PIM</h1>
           <p className="mt-1 text-sm text-ink-muted">Personal Information Management — live from Supabase.</p>
         </div>
-        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           <Plus size={16} /> Add employee
         </button>
       </div>
@@ -245,7 +245,7 @@ function PimPageInner() {
 
               <div className="flex justify-end gap-2 border-t border-surface-border pt-4">
                 <button type="button" onClick={() => setEditing(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-                <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+                <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
                   {saving && <Loader2 size={14} className="animate-spin" />} Save
                 </button>
               </div>
