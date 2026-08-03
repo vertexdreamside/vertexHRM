@@ -29,7 +29,7 @@ export default function LoginPage() {
     if (error) {
       setError(
         error.message === "Invalid login credentials"
-          ? "That email or password isn't right - try again."
+          ? "That email or password isn't right — try again."
           : error.message
       );
       return;
@@ -51,21 +51,30 @@ export default function LoginPage() {
   }
 
   return (
+    // One continuous gradient across the whole page rather than a hard
+    // split panel — the login card floats on top of it instead of
+    // sitting in a separate white half, so the color reads as merged
+    // behind the field rather than stopping at an edge. This also
+    // drops the dependency on the uploaded background image entirely,
+    // since that file wasn't reliably rendering — bg-brand-gradient is
+    // pure CSS and can't fail to load.
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-brand-gradient p-6">
+      {/* Soft decorative glow shapes for a bit of life behind the card,
+          purely CSS, no image dependency. */}
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" aria-hidden="true" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-white/10 blur-3xl" aria-hidden="true" />
 
-      <div className="relative z-10 w-full max-w-sm">
+      <div className="relative z-10 flex w-full max-w-sm flex-col items-center">
         <div className="mb-6 flex flex-col items-center text-center">
           <div className="rounded-2xl bg-white/15 p-4 shadow-lg backdrop-blur-md">
             <Image src="/vertexhrm-logo-reversed.svg" alt="vertexhrm" width={180} height={54} priority />
           </div>
-          <p className="mt-4 text-sm text-white/80">
-            Vertex HRM - a product of <span className="font-medium">VERTEX</span>
+          <p className="mt-4 max-w-xs text-sm font-medium text-white/90">
+            All your HR and admin, in one place.
           </p>
         </div>
 
-        <div className="rounded-2xl bg-white/95 p-8 shadow-xl backdrop-blur">
+        <div className="w-full rounded-2xl bg-white/95 p-8 shadow-xl backdrop-blur">
           <h1 className="font-display text-2xl font-medium text-ink">Sign in</h1>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -114,6 +123,10 @@ export default function LoginPage() {
             </button>
           </form>
         </div>
+
+        <p className="mt-8 text-xs text-white/60">
+          Vertex HRM &mdash; a product of <span className="font-medium text-white/80">VERTEX</span>
+        </p>
       </div>
     </div>
   );
