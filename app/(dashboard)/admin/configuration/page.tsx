@@ -151,7 +151,7 @@ function EmailConfigTab() {
           <button onClick={() => { setTestSent(true); setTimeout(() => setTestSent(false), 2000); }} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
             Send test mail
           </button>
-          <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
             {saving && <Loader2 size={14} className="animate-spin" />} Save
           </button>
           {testSent && <span className="text-sm text-state-success">Test mail queued</span>}
@@ -252,7 +252,7 @@ function LocalizationTab() {
           </select>
         </Field>
         <div className="flex items-center gap-3">
-          <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
             {saving && <Loader2 size={14} className="animate-spin" />} Save
           </button>
           {saved && <span className="text-sm text-state-success">Saved</span>}
@@ -354,7 +354,7 @@ function SocialAuthTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add provider</button>
+        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add provider</button>
       </div>
       <div className="overflow-hidden rounded-card border border-surface-border bg-white">
         {loading ? <Loading /> : (
@@ -381,7 +381,7 @@ function SocialAuthTab() {
             {error && <p className="text-sm text-state-danger">{error}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
@@ -451,7 +451,7 @@ function PasswordPolicyTab() {
           <input className={inputCls} placeholder="e.g. 41.72.xxx.xxx/32 — leave blank for no restriction" value={policy.admin_ip_allowlist ?? ""} onChange={(e) => setPolicy({ ...policy, admin_ip_allowlist: e.target.value })} />
         </Field>
         <div className="flex gap-3 pt-2">
-          <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+          <button onClick={save} disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
         </div>
         <p className="text-xs text-ink-soft">
           Saved for reference/audit — enforcing these at login (complexity, lockout, session timeout) requires Supabase Auth hooks or a custom auth flow, not wired to actual sign-in behavior yet.
@@ -506,7 +506,7 @@ function CustomFieldsTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add custom field</button>
+        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add custom field</button>
       </div>
       <div className="overflow-hidden rounded-card border border-surface-border bg-white">
         {loading ? <Loading /> : (
@@ -544,7 +544,7 @@ function CustomFieldsTab() {
             <label className="flex items-center gap-2 text-sm text-ink"><input type="checkbox" name="required" /> Required</label>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
