@@ -225,7 +225,7 @@ export default function BrandingPage() {
         <button onClick={handlePreview} className="flex items-center gap-2 rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
           <Eye size={14} /> Preview
         </button>
-        <button onClick={handlePublish} disabled={publishing} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+        <button onClick={handlePublish} disabled={publishing} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
           {publishing ? <Loader2 size={14} className="animate-spin" /> : <UploadCloud size={14} />} Publish
         </button>
         {publishedNote && <span className="text-sm text-state-success">{publishedNote}</span>}
