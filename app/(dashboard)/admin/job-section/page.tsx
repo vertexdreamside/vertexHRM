@@ -156,7 +156,7 @@ function JobTitlesTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           <Plus size={16} /> Add job title
         </button>
       </div>
@@ -198,7 +198,7 @@ function JobTitlesTab() {
             <div><label className="mb-1 block text-sm font-medium text-ink">Notes (internal)</label><textarea name="notes" rows={2} defaultValue={editingRecord?.notes ?? ""} className={inputCls} /></div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setEditing(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
@@ -275,7 +275,7 @@ function PayGradesTab() {
     <div className="space-y-8">
       <div>
         <div className="mb-3 flex justify-end">
-          <button onClick={() => setEditingGrade("new")} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add pay grade</button>
+          <button onClick={() => setEditingGrade("new")} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add pay grade</button>
         </div>
         <div className="overflow-hidden rounded-card border border-surface-border bg-white">
           <table className="w-full text-left text-sm">
@@ -330,7 +330,7 @@ function PayGradesTab() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setEditingGrade(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
@@ -344,7 +344,7 @@ function PayGradesTab() {
             <div><label className="mb-1 block text-sm font-medium text-ink">Symbol</label><input name="symbol" placeholder="₨" className={inputCls} /></div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAddingCurrency(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
@@ -392,7 +392,7 @@ function EmploymentStatusTab() {
     <div>
       <p className="mb-3 text-sm text-ink-muted">The six defaults line up with Seychelles Employment Act categories — toggle any off rather than deleting, or add an organization-specific one.</p>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add employment status</button>
+        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add employment status</button>
       </div>
       {loading ? <div className="flex items-center gap-2 py-16 text-sm text-ink-soft"><Loader2 size={16} className="animate-spin" /> Loading…</div> : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -411,7 +411,7 @@ function EmploymentStatusTab() {
             <div><label className="mb-1 block text-sm font-medium text-ink">Name *</label><input name="name" required className={inputCls} /></div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
@@ -459,7 +459,7 @@ function JobCategoriesTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add job category</button>
+        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add job category</button>
       </div>
       <div className="overflow-hidden rounded-card border border-surface-border bg-white">
         <table className="w-full text-left text-sm">
@@ -480,7 +480,7 @@ function JobCategoriesTab() {
             <div><label className="mb-1 block text-sm font-medium text-ink">Name *</label><input name="name" required className={inputCls} /></div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
@@ -526,7 +526,7 @@ function WorkShiftsTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add work shift</button>
+        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add work shift</button>
       </div>
       <div className="overflow-hidden rounded-card border border-surface-border bg-white">
         <table className="w-full text-left text-sm">
@@ -554,7 +554,7 @@ function WorkShiftsTab() {
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
-              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
+              <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
         </Modal>
