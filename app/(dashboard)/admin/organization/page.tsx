@@ -213,6 +213,7 @@ interface LocationRow {
   island: string | null;
   phone: string | null;
   address: string | null;
+  notes: string | null;
 }
 
 function LocationsTab() {
@@ -244,15 +245,26 @@ function LocationsTab() {
       country: form.get("country"),
       island: form.get("island"),
       phone: form.get("phone"),
-      address: form.get("address")
+      address: form.get("address"),
+      notes: form.get("notes")
     };
 
-    if (editing === "new") {
-      await supabase.from("locations").insert(record);
-    } else if (editing) {
-      await supabase.from("locations").update(record).eq("id", editing.id);
-    }
+    const { error } =
+      editing === "new"
+        ? await supabase.from("locations").insert(record)
+        : editing
+          ? await supabase.from("locations").update(record).eq("id", editing.id)
+          : { error: null };
+
     setSaving(false);
+    if (error) {
+      // This exact class of bug (a form field with no matching column,
+      // insert rejected, nothing shown) is what made this look like it
+      // "didn't save" before — now any real failure is visible instead
+      // of silently swallowed.
+      alert(`Couldn't save: ${error.message}`);
+      return;
+    }
     setEditing(null);
     load();
   }
@@ -341,6 +353,10 @@ function LocationsTab() {
               <label className="mb-1 block text-sm font-medium text-ink">Address</label>
               <input name="address" defaultValue={editingRecord?.address ?? ""} className={inputCls} />
             </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">Notes</label>
+              <textarea name="notes" rows={2} defaultValue={editingRecord?.notes ?? ""} className={inputCls} />
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setEditing(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
               <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
@@ -361,18 +377,22 @@ interface DeptRow {
   id: string;
   name: string;
   parent_id: string | null;
+  unit_id: string | null;
+  description: string | null;
 }
 
 function StructureTab() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [units, setUnits] = useState<DeptRow[]>([]);
-  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<DeptRow | "new" | null>(null);
+  const [newParentId, setNewParentId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const editingRecord = editing !== "new" ? editing : null;
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("departments").select("id, name, parent_id").order("name");
+    const { data } = await supabase.from("departments").select("id, name, parent_id, unit_id, description").order("name");
     setUnits((data as DeptRow[]) ?? []);
     setLoading(false);
   }
@@ -386,13 +406,33 @@ function StructureTab() {
     e.preventDefault();
     setSaving(true);
     const form = new FormData(e.currentTarget);
-    await supabase.from("departments").insert({
+    const record = {
       name: form.get("name"),
+      unit_id: form.get("unitId") || null,
+      description: form.get("description") || null,
       parent_id: form.get("parentId") || null
-    });
+    };
+
+    const { error } =
+      editing === "new"
+        ? await supabase.from("departments").insert(record)
+        : editing
+          ? await supabase.from("departments").update(record).eq("id", editing.id)
+          : { error: null };
+
     setSaving(false);
-    setAdding(false);
+    if (error) {
+      alert(`Couldn't save: ${error.message}`);
+      return;
+    }
+    setEditing(null);
+    setNewParentId(null);
     load();
+  }
+
+  function openAddSubUnit(parentId: string) {
+    setNewParentId(parentId);
+    setEditing("new");
   }
 
   function renderTree(parentId: string | null, depth = 0): React.ReactNode {
@@ -402,9 +442,12 @@ function StructureTab() {
       <ul className={depth > 0 ? "ml-6 border-l border-surface-border pl-4" : ""}>
         {children.map((u) => (
           <li key={u.id} className="py-1.5">
-            <div className="flex items-center gap-2">
+            <div className="group flex items-center gap-2">
               <span className="font-medium text-ink">{u.name}</span>
-              <span className="font-mono text-xs text-ink-soft">{u.id.slice(0, 8).toUpperCase()}</span>
+              <span className="font-mono text-xs text-ink-soft">{u.unit_id || u.id.slice(0, 8).toUpperCase()}</span>
+              {u.description && <span className="text-xs text-ink-soft">— {u.description}</span>}
+              <button onClick={() => setEditing(u)} aria-label={`Edit ${u.name}`} className="rounded p-1 text-ink-soft opacity-0 hover:bg-surface-subtle hover:text-brand-700 group-hover:opacity-100"><Pencil size={13} /></button>
+              <button onClick={() => openAddSubUnit(u.id)} className="text-xs text-ink-soft opacity-0 hover:text-brand-700 group-hover:opacity-100">+ sub-unit</button>
             </div>
             {renderTree(u.id, depth + 1)}
           </li>
@@ -416,7 +459,7 @@ function StructureTab() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button onClick={() => { setNewParentId(null); setEditing("new"); }} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           <Plus size={16} /> Add organization unit
         </button>
       </div>
@@ -429,24 +472,32 @@ function StructureTab() {
         )}
       </div>
 
-      {adding && (
-        <Modal title="Add organization unit" onClose={() => setAdding(false)}>
+      {editing !== null && (
+        <Modal title={editing === "new" ? "Add organization unit" : "Edit organization unit"} onClose={() => { setEditing(null); setNewParentId(null); }}>
           <form onSubmit={save} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">Name *</label>
-              <input name="name" required className={inputCls} />
+              <input name="name" required defaultValue={editingRecord?.name} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">Unit ID</label>
+              <input name="unitId" placeholder="e.g. HR-01" defaultValue={editingRecord?.unit_id ?? ""} className={inputCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-ink">Description</label>
+              <textarea name="description" rows={2} defaultValue={editingRecord?.description ?? ""} className={inputCls} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">Parent unit</label>
-              <select name="parentId" className={inputCls}>
+              <select name="parentId" defaultValue={editingRecord?.parent_id ?? newParentId ?? ""} className={inputCls}>
                 <option value="">None — top level</option>
-                {units.map((u) => (
+                {units.filter((u) => u.id !== editingRecord?.id).map((u) => (
                   <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </select>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
+              <button type="button" onClick={() => { setEditing(null); setNewParentId(null); }} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
               <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
                 {saving && <Loader2 size={14} className="animate-spin" />} Save
               </button>
@@ -472,8 +523,9 @@ function HolidaysTab() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [holidays, setHolidays] = useState<HolidayRow[]>([]);
-  const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<HolidayRow | "new" | null>(null);
   const [saving, setSaving] = useState(false);
+  const editingRecord = editing !== "new" ? editing : null;
 
   async function load() {
     setLoading(true);
@@ -491,13 +543,19 @@ function HolidaysTab() {
     e.preventDefault();
     setSaving(true);
     const form = new FormData(e.currentTarget);
-    await supabase.from("holidays").insert({
+    const record = {
       name: form.get("name"),
       date: form.get("date"),
       recurring: form.get("recurring") === "on"
-    });
+    };
+
+    if (editing === "new") {
+      await supabase.from("holidays").insert(record);
+    } else if (editing) {
+      await supabase.from("holidays").update(record).eq("id", editing.id);
+    }
     setSaving(false);
-    setAdding(false);
+    setEditing(null);
     load();
   }
 
@@ -512,7 +570,7 @@ function HolidaysTab() {
         Seeded with Seychelles public holidays per HRM Admin spec §6.3 — review yearly, dates shift.
       </p>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
+        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">
           <Plus size={16} /> Add holiday
         </button>
       </div>
@@ -539,7 +597,10 @@ function HolidaysTab() {
                   </td>
                   <td className="px-4 py-3 text-ink-muted">{h.recurring ? "Yes" : "No"}</td>
                   <td className="px-4 py-3">
-                    <div className="flex justify-end">
+                    <div className="flex justify-end gap-1">
+                      <button onClick={() => setEditing(h)} aria-label={`Edit ${h.name}`} className="rounded-md p-1.5 text-ink-soft hover:bg-surface-subtle hover:text-brand-700">
+                        <Pencil size={16} />
+                      </button>
                       <button onClick={() => remove(h.id)} aria-label={`Delete ${h.name}`} className="rounded-md p-1.5 text-ink-soft hover:bg-surface-subtle hover:text-state-danger">
                         <Trash2 size={16} />
                       </button>
@@ -552,22 +613,22 @@ function HolidaysTab() {
         )}
       </div>
 
-      {adding && (
-        <Modal title="Add holiday" onClose={() => setAdding(false)}>
+      {editing !== null && (
+        <Modal title={editing === "new" ? "Add holiday" : "Edit holiday"} onClose={() => setEditing(null)}>
           <form onSubmit={save} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">Holiday name *</label>
-              <input name="name" required className={inputCls} />
+              <input name="name" required defaultValue={editingRecord?.name} className={inputCls} />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-ink">Date *</label>
-              <input name="date" type="date" required className={inputCls} />
+              <input name="date" type="date" required defaultValue={editingRecord?.date} className={inputCls} />
             </div>
             <label className="flex items-center gap-2 text-sm text-ink">
-              <input type="checkbox" name="recurring" defaultChecked /> Recurring annually
+              <input type="checkbox" name="recurring" defaultChecked={editingRecord?.recurring ?? true} /> Recurring annually
             </label>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
+              <button type="button" onClick={() => setEditing(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
               <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
                 {saving && <Loader2 size={14} className="animate-spin" />} Save
               </button>
