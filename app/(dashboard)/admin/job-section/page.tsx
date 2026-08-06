@@ -498,65 +498,119 @@ function WorkShiftsTab() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [shifts, setShifts] = useState<ShiftRow[]>([]);
-  const [adding, setAdding] = useState(false);
+  const [employees, setEmployees] = useState<{ id: string; full_name: string }[]>([]);
+  const [assignments, setAssignments] = useState<{ id: string; work_shift_id: string; employee_id: string }[]>([]);
+  const [editing, setEditing] = useState<ShiftRow | "new" | null>(null);
+  const [assigning, setAssigning] = useState<ShiftRow | null>(null);
   const [saving, setSaving] = useState(false);
+  const editingRecord = editing !== "new" ? editing : null;
 
   async function load() {
     setLoading(true);
-    const { data } = await supabase.from("work_shifts").select("id, name, from_time, to_time").order("name");
-    setShifts((data as ShiftRow[]) ?? []);
+    const [shiftRes, empRes, assignRes] = await Promise.all([
+      supabase.from("work_shifts").select("id, name, from_time, to_time").order("name"),
+      supabase.from("employees").select("id, full_name").order("full_name"),
+      supabase.from("work_shift_assignments").select("id, work_shift_id, employee_id")
+    ]);
+    setShifts((shiftRes.data as ShiftRow[]) ?? []);
+    setEmployees(empRes.data ?? []);
+    setAssignments(assignRes.data ?? []);
     setLoading(false);
   }
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  async function add(e: React.FormEvent<HTMLFormElement>) {
+  async function save(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     const form = new FormData(e.currentTarget);
-    await supabase.from("work_shifts").insert({
-      name: form.get("name"),
-      from_time: form.get("from"),
-      to_time: form.get("to")
-    });
+    const record = { name: form.get("name"), from_time: form.get("from"), to_time: form.get("to") };
+
+    if (editing === "new") {
+      await supabase.from("work_shifts").insert(record);
+    } else if (editing) {
+      await supabase.from("work_shifts").update(record).eq("id", editing.id);
+    }
     setSaving(false);
-    setAdding(false);
+    setEditing(null);
     load();
+  }
+
+  async function toggleAssignment(shiftId: string, employeeId: string) {
+    const existing = assignments.find((a) => a.work_shift_id === shiftId && a.employee_id === employeeId);
+    if (existing) {
+      await supabase.from("work_shift_assignments").delete().eq("id", existing.id);
+    } else {
+      await supabase.from("work_shift_assignments").insert({ work_shift_id: shiftId, employee_id: employeeId });
+    }
+    load();
+  }
+
+  function assignedCount(shiftId: string) {
+    return assignments.filter((a) => a.work_shift_id === shiftId).length;
   }
 
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setAdding(true)} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add work shift</button>
+        <button onClick={() => setEditing("new")} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90"><Plus size={16} /> Add work shift</button>
       </div>
       <div className="overflow-hidden rounded-card border border-surface-border bg-white">
         <table className="w-full text-left text-sm">
-          <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-ink-soft"><tr><th className="px-4 py-3">Shift name</th><th className="px-4 py-3">From</th><th className="px-4 py-3">To</th><th className="px-4 py-3">Hours/day</th></tr></thead>
+          <thead className="bg-surface-subtle text-xs uppercase tracking-wide text-ink-soft"><tr><th className="px-4 py-3">Shift name</th><th className="px-4 py-3">From</th><th className="px-4 py-3">To</th><th className="px-4 py-3">Hours/day</th><th className="px-4 py-3">Assigned</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
           <tbody>
-            {loading ? <LoadingRow colSpan={4} /> : shifts.map((s) => (
+            {loading ? <LoadingRow colSpan={6} /> : shifts.map((s) => (
               <tr key={s.id} className="border-t border-surface-border">
                 <td className="px-4 py-3 font-medium text-ink">{s.name}</td>
                 <td className="px-4 py-3 text-ink-muted">{s.from_time.slice(0, 5)}</td>
                 <td className="px-4 py-3 text-ink-muted">{s.to_time.slice(0, 5)}</td>
                 <td className="px-4 py-3 text-ink-muted">{hoursPerDay(s.from_time.slice(0, 5), s.to_time.slice(0, 5))}</td>
+                <td className="px-4 py-3 text-ink-muted">
+                  <button onClick={() => setAssigning(s)} className="text-brand-700 hover:underline">{assignedCount(s.id)} employee(s)</button>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end">
+                    <button onClick={() => setEditing(s)} aria-label={`Edit ${s.name}`} className="rounded-md p-1.5 text-ink-soft hover:bg-surface-subtle hover:text-brand-700"><Pencil size={16} /></button>
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      {adding && (
-        <Modal title="Add work shift" onClose={() => setAdding(false)}>
-          <form onSubmit={add} className="space-y-4">
-            <div><label className="mb-1 block text-sm font-medium text-ink">Shift name *</label><input name="name" required placeholder="Morning Shift" className={inputCls} /></div>
+      {editing !== null && (
+        <Modal title={editing === "new" ? "Add work shift" : "Edit work shift"} onClose={() => setEditing(null)}>
+          <form onSubmit={save} className="space-y-4">
+            <div><label className="mb-1 block text-sm font-medium text-ink">Shift name *</label><input name="name" required placeholder="Morning Shift" defaultValue={editingRecord?.name} className={inputCls} /></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><label className="mb-1 block text-sm font-medium text-ink">From *</label><input name="from" type="time" required className={inputCls} /></div>
-              <div><label className="mb-1 block text-sm font-medium text-ink">To *</label><input name="to" type="time" required className={inputCls} /></div>
+              <div><label className="mb-1 block text-sm font-medium text-ink">From *</label><input name="from" type="time" required defaultValue={editingRecord?.from_time.slice(0, 5)} className={inputCls} /></div>
+              <div><label className="mb-1 block text-sm font-medium text-ink">To *</label><input name="to" type="time" required defaultValue={editingRecord?.to_time.slice(0, 5)} className={inputCls} /></div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setAdding(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
+              <button type="button" onClick={() => setEditing(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
               <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">{saving && <Loader2 size={14} className="animate-spin" />} Save</button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {assigning && (
+        <Modal title={`Assign employees — ${assigning.name}`} onClose={() => setAssigning(null)}>
+          <div className="max-h-80 space-y-1 overflow-y-auto">
+            {employees.map((e) => {
+              const checked = assignments.some((a) => a.work_shift_id === assigning.id && a.employee_id === e.id);
+              return (
+                <label key={e.id} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-surface-subtle">
+                  <input type="checkbox" checked={checked} onChange={() => toggleAssignment(assigning.id, e.id)} />
+                  {e.full_name}
+                </label>
+              );
+            })}
+            {employees.length === 0 && <p className="text-sm text-ink-soft">No employees yet.</p>}
+          </div>
+          <div className="mt-4 flex justify-end">
+            <button onClick={() => setAssigning(null)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Done</button>
+          </div>
         </Modal>
       )}
     </div>
