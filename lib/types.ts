@@ -118,6 +118,9 @@ export interface BrandingSettings {
   primaryColor: string; // gradient start — spec's "Primary Color *"
   primaryFontColor: string; // spec's "Primary Font Color *"
   primaryGradientColor1: string; // gradient end — spec's "Primary Gradient Color 1 *"
+  secondaryColor: string | null;
+  secondaryFontColor: string | null;
+  primaryGradientColor2: string | null;
   logoUrl: string | null;
   loginBannerUrl: string | null;
   socialPreviewEnabled: boolean;
