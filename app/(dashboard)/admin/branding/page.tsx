@@ -10,9 +10,12 @@ import type { BrandingSettings } from "@/lib/types";
 // match your uploaded logo files — this is the "factory" state Reset to
 // Default returns to.
 const DEFAULTS: BrandingSettings = {
-  primaryColor: "#2f3fd9",
+  primaryColor: "#1668d6",
   primaryFontColor: "#18181b",
-  primaryGradientColor1: "#7b3fd9",
+  primaryGradientColor1: "#4f8fea",
+  secondaryColor: "#64748b",
+  secondaryFontColor: "#334155",
+  primaryGradientColor2: "#93c5fd",
   logoUrl: "/vertexhrm-logo-primary.svg",
   loginBannerUrl: null,
   socialPreviewEnabled: true
@@ -45,6 +48,9 @@ export default function BrandingPage() {
         primaryColor: data.primary_color,
         primaryFontColor: data.primary_font_color,
         primaryGradientColor1: data.primary_gradient_color_1,
+        secondaryColor: data.secondary_color ?? DEFAULTS.secondaryColor,
+        secondaryFontColor: data.secondary_font_color ?? DEFAULTS.secondaryFontColor,
+        primaryGradientColor2: data.primary_gradient_color_2 ?? DEFAULTS.primaryGradientColor2,
         logoUrl: data.logo_url ?? DEFAULTS.logoUrl,
         loginBannerUrl: data.login_banner_url,
         socialPreviewEnabled: data.social_preview_enabled
@@ -76,6 +82,9 @@ export default function BrandingPage() {
         primary_color: settings.primaryColor,
         primary_font_color: settings.primaryFontColor,
         primary_gradient_color_1: settings.primaryGradientColor1,
+        secondary_color: settings.secondaryColor,
+        secondary_font_color: settings.secondaryFontColor,
+        primary_gradient_color_2: settings.primaryGradientColor2,
         logo_url: settings.logoUrl,
         login_banner_url: settings.loginBannerUrl,
         social_preview_enabled: settings.socialPreviewEnabled,
@@ -159,6 +168,9 @@ export default function BrandingPage() {
           <ColorField label="Primary Color *" value={settings.primaryColor} onChange={(v) => setSettings((s) => ({ ...s, primaryColor: v }))} />
           <ColorField label="Primary Font Color *" value={settings.primaryFontColor} onChange={(v) => setSettings((s) => ({ ...s, primaryFontColor: v }))} />
           <ColorField label="Primary Gradient Color 1 *" value={settings.primaryGradientColor1} onChange={(v) => setSettings((s) => ({ ...s, primaryGradientColor1: v }))} />
+          <ColorField label="Primary Gradient Color 2" value={settings.primaryGradientColor2 ?? "#93c5fd"} onChange={(v) => setSettings((s) => ({ ...s, primaryGradientColor2: v }))} />
+          <ColorField label="Secondary Color" value={settings.secondaryColor ?? "#64748b"} onChange={(v) => setSettings((s) => ({ ...s, secondaryColor: v }))} />
+          <ColorField label="Secondary Font Color" value={settings.secondaryFontColor ?? "#334155"} onChange={(v) => setSettings((s) => ({ ...s, secondaryFontColor: v }))} />
         </div>
         <div
           className="mt-4 flex h-16 items-center justify-center rounded-md text-sm font-medium text-white"
@@ -169,34 +181,38 @@ export default function BrandingPage() {
       </section>
 
       <section className="mt-6 rounded-card border border-surface-border bg-white p-6">
-        <h2 className="font-display text-base font-medium text-ink">Client logo</h2>
-        <p className="mt-1 text-xs text-ink-soft">JPG, PNG, GIF, or SVG — up to 1MB. Recommended 50×50px.</p>
-        <div className="mt-3 flex items-center gap-4">
-          <div className="flex h-16 w-16 items-center justify-center rounded-md border border-dashed border-surface-border bg-surface-subtle">
-            {uploadingLogo ? <Loader2 size={18} className="animate-spin text-ink-soft" /> : logoPreview && (
-              <Image src={logoPreview} alt="" width={48} height={48} unoptimized />
-            )}
+        <div className="grid grid-cols-2 gap-6">
+          <div>
+            <h2 className="font-display text-base font-medium text-ink">Client logo</h2>
+            <p className="mt-1 text-xs text-ink-soft">JPG, PNG, GIF, or SVG — up to 1MB. Recommended 50×50px.</p>
+            <div className="mt-3 flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-md border border-dashed border-surface-border bg-surface-subtle">
+                {uploadingLogo ? <Loader2 size={18} className="animate-spin text-ink-soft" /> : logoPreview && (
+                  <Image src={logoPreview} alt="" width={48} height={48} unoptimized />
+                )}
+              </div>
+              <label htmlFor="logo" className="flex cursor-pointer items-center gap-2 rounded-md border border-surface-border px-3 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
+                <Upload size={14} /> Browse
+              </label>
+              <input id="logo" type="file" accept=".jpg,.jpeg,.png,.gif,.svg" className="hidden" onChange={handleLogoUpload} />
+            </div>
           </div>
-          <label htmlFor="logo" className="flex cursor-pointer items-center gap-2 rounded-md border border-surface-border px-3 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
-            <Upload size={14} /> Browse
-          </label>
-          <input id="logo" type="file" accept=".jpg,.jpeg,.png,.gif,.svg" className="hidden" onChange={handleLogoUpload} />
-        </div>
-      </section>
 
-      <section className="mt-6 rounded-card border border-surface-border bg-white p-6">
-        <h2 className="font-display text-base font-medium text-ink">Login banner</h2>
-        <p className="mt-1 text-xs text-ink-soft">JPG, PNG, GIF, or SVG — up to 1MB.</p>
-        <div className="mt-3 flex items-center gap-4">
-          <div className="flex h-16 w-28 items-center justify-center rounded-md border border-dashed border-surface-border bg-surface-subtle text-xs text-ink-soft">
-            {uploadingBanner ? <Loader2 size={18} className="animate-spin text-ink-soft" /> : bannerPreview ? (
-              <Image src={bannerPreview} alt="" width={112} height={64} unoptimized className="rounded-md object-cover" />
-            ) : "No banner set"}
+          <div>
+            <h2 className="font-display text-base font-medium text-ink">Client banner</h2>
+            <p className="mt-1 text-xs text-ink-soft">JPG, PNG, GIF, or SVG — up to 1MB.</p>
+            <div className="mt-3 flex items-center gap-4">
+              <div className="flex h-16 w-28 items-center justify-center rounded-md border border-dashed border-surface-border bg-surface-subtle text-xs text-ink-soft">
+                {uploadingBanner ? <Loader2 size={18} className="animate-spin text-ink-soft" /> : bannerPreview ? (
+                  <Image src={bannerPreview} alt="" width={112} height={64} unoptimized className="rounded-md object-cover" />
+                ) : "No banner set"}
+              </div>
+              <label htmlFor="banner" className="flex cursor-pointer items-center gap-2 rounded-md border border-surface-border px-3 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
+                <Upload size={14} /> Browse
+              </label>
+              <input id="banner" type="file" accept=".jpg,.jpeg,.png,.gif,.svg" className="hidden" onChange={handleBannerUpload} />
+            </div>
           </div>
-          <label htmlFor="banner" className="flex cursor-pointer items-center gap-2 rounded-md border border-surface-border px-3 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
-            <Upload size={14} /> Browse
-          </label>
-          <input id="banner" type="file" accept=".jpg,.jpeg,.png,.gif,.svg" className="hidden" onChange={handleBannerUpload} />
         </div>
       </section>
 
