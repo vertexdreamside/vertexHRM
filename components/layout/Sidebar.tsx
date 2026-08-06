@@ -47,13 +47,15 @@ function isActive(pathname: string, href: string) {
   return pathname === base || pathname.startsWith(`${base}/`);
 }
 
-export function Sidebar() {
+export function Sidebar({ disabledKeys = [] }: { disabledKeys?: string[] }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const visibleNav = NAV.filter((n) => !disabledKeys.includes(n.key));
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -119,7 +121,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
-        {NAV.map(({ key, label, href, icon: Icon }) => {
+        {visibleNav.map(({ key, label, href, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
             <Link
