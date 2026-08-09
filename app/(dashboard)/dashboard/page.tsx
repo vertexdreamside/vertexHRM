@@ -69,11 +69,10 @@ const QUICK_LAUNCH = [
   { label: "My Timesheet", href: "/time?tab=mytimesheet", icon: FileClock }
 ];
 
-function greeting() {
+function greeting(name?: string | null) {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
+  const timeGreeting = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+  return name ? `${timeGreeting}, ${name}` : timeGreeting;
 }
 
 export default function DashboardPage() {
@@ -106,6 +105,7 @@ export default function DashboardPage() {
 function WelcomeBanner() {
   const supabase = createClient();
   const [stats, setStats] = useState<{ employees: number; pendingLeave: number; openTickets: number } | null>(null);
+  const [myFirstName, setMyFirstName] = useState<string | null>(null);
   const today = new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" });
 
   useEffect(() => {
@@ -115,6 +115,15 @@ function WelcomeBanner() {
         supabase.from("leave_requests").select("id", { count: "exact", head: true }).eq("status", "Pending")
       ]);
       setStats({ employees: empRes.count ?? 0, pendingLeave: leaveRes.count ?? 0, openTickets: 0 });
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: appUser } = await supabase.from("app_users").select("employee_id").eq("id", user.id).single();
+        if (appUser?.employee_id) {
+          const { data: employee } = await supabase.from("employees").select("full_name").eq("id", appUser.employee_id).single();
+          if (employee?.full_name) setMyFirstName(employee.full_name.split(" ")[0]);
+        }
+      }
     }
     load();
   }, [supabase]);
@@ -127,7 +136,7 @@ function WelcomeBanner() {
           <p className="flex items-center gap-1.5 text-sm text-white/70">
             <Sun size={14} /> {today}
           </p>
-          <h1 className="mt-1 font-display text-2xl font-medium sm:text-3xl">{greeting()}.</h1>
+          <h1 className="mt-1 font-display text-2xl font-medium sm:text-3xl">{greeting(myFirstName)}.</h1>
           <p className="mt-1 text-sm text-white/80">Here&apos;s what&apos;s happening across the organization today.</p>
         </div>
 
