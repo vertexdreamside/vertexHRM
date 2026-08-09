@@ -127,7 +127,14 @@ export default function RolesPage() {
       alert(`Couldn't save: ${error.message}`);
       return;
     }
-    // TODO: write an audit_log row here — action: 'Permission Change'.
+
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from("audit_log").insert({
+      user_id: user?.id,
+      action: "Permission Change",
+      module: "Roles",
+      details: { role_id: editingRoleId, modules_updated: rows.map((r) => r.module) }
+    });
 
     setEditingRoleId(null);
     setDraftPermissions(null);
