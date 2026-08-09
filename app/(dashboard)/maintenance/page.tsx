@@ -8,7 +8,8 @@ const RECORD_TYPES = [
   { key: "leave_requests", label: "Leave Requests" },
   { key: "timesheets", label: "Timesheets" },
   { key: "claims", label: "Claims" },
-  { key: "audit_log", label: "Audit Log" }
+  { key: "audit_log", label: "Audit Log" },
+  { key: "candidates", label: "Candidate Records" }
 ];
 
 const inputCls = "w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500";
@@ -55,7 +56,7 @@ export default function MaintenancePage() {
       return;
     }
     setReauthenticated(true);
-    // TODO: write an audit_log entry — action: 'Maintenance Access'.
+    await supabase.from("audit_log").insert({ user_id: (await supabase.auth.getUser()).data.user?.id, action: "Maintenance Access", module: "Maintenance" });
   }
 
   async function preview() {
@@ -107,7 +108,7 @@ export default function MaintenancePage() {
         <form onSubmit={handleReauth} className="mt-6 space-y-3 text-left">
           <input type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} />
           {authError && <p className="text-sm text-state-danger">{authError}</p>}
-          <button type="submit" disabled={authenticating} className="flex w-full items-center justify-center gap-2 rounded-md bg-brand-gradient px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
+          <button type="submit" disabled={authenticating} className="flex w-full items-center justify-center gap-2 rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-60">
             {authenticating && <Loader2 size={14} className="animate-spin" />} Continue
           </button>
         </form>
