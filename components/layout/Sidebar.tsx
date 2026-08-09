@@ -104,6 +104,7 @@ export function Sidebar({ disabledKeys = [] }: { disabledKeys?: string[] }) {
       <div className={clsx("px-3 pb-3", collapsed && "px-2")}>
         <button
           onClick={() => setSearchOpen(true)}
+          data-tour="sidebar-search"
           title={collapsed ? "Search (⌘K)" : undefined}
           className={clsx(
             "flex w-full items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm text-white/70 transition-colors hover:bg-white/15",
@@ -120,7 +121,7 @@ export function Sidebar({ disabledKeys = [] }: { disabledKeys?: string[] }) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
+      <nav data-tour="sidebar-nav" className="flex-1 space-y-1 overflow-y-auto px-3 pb-4">
         {visibleNav.map(({ key, label, href, icon: Icon }) => {
           const active = isActive(pathname, href);
           return (
@@ -151,6 +152,7 @@ export function Sidebar({ disabledKeys = [] }: { disabledKeys?: string[] }) {
       {!collapsed && (
         <div className="border-t border-white/15 px-5 py-4">
           <Link
+            data-tour="sidebar-adminops"
             href="/ops/dashboard"
             className="flex items-center gap-2 text-sm font-medium text-white hover:underline"
           >

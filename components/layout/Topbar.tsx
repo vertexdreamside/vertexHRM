@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Info, LifeBuoy, KeyRound, LogOut, ChevronDown } from "lucide-react";
+import { Bell, Info, LifeBuoy, KeyRound, LogOut, ChevronDown, BookOpen } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { createClient } from "@/lib/supabase/client";
 
@@ -65,6 +65,7 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
           <button
             type="button"
             onClick={openNotifications}
+            data-tour="topbar-notifications"
             aria-label="Notifications"
             aria-expanded={notifOpen}
             className="relative rounded-full p-2 text-ink-muted transition-transform hover:scale-110 hover:bg-surface-subtle"
@@ -116,6 +117,7 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
         <div className="relative" ref={menuRef}>
           <button
             onClick={() => setMenuOpen((v) => !v)}
+            data-tour="topbar-account"
             aria-haspopup="menu"
             aria-expanded={menuOpen}
             className="flex items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-surface-subtle"
@@ -144,6 +146,14 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
               >
                 <Info size={16} className="text-ink-soft" /> About
               </button>
+              <a
+                href="/help"
+                role="menuitem"
+                data-tour="help-link"
+                className="flex w-full items-center gap-2.5 px-4 py-2 text-left text-sm text-ink hover:bg-surface-subtle"
+              >
+                <BookOpen size={16} className="text-ink-soft" /> Help Centre
+              </a>
               <button
                 role="menuitem"
                 onClick={() => { setShowSupport(true); setMenuOpen(false); }}
