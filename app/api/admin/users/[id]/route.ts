@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/permissions";
 
 export async function PATCH(
   request: Request,
@@ -12,6 +13,16 @@ export async function PATCH(
   } = await supabase.auth.getUser();
   if (!caller) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // This is the most important place this check was missing — without
+  // it, any authenticated user could PATCH their own account (or
+  // anyone else's) and set role_id to System Administrator, granting
+  // themselves full admin access. Same system_config/can_edit gate as
+  // the rest of user management.
+  const authorized = await hasPermission(supabase, caller.id, "system_config", "can_edit");
+  if (!authorized) {
+    return NextResponse.json({ error: "You don't have permission to edit user accounts." }, { status: 403 });
   }
 
   const body = await request.json();
@@ -47,9 +58,15 @@ export async function PATCH(
     }
   }
 
-  // TODO: write audit_log row — action: 'Update' or 'Permission Change'.
-  // TODO: if status changed to 'disabled', also revoke active sessions
-  // (§5.9) — not wired since Active Sessions is still seed data too.
+  await admin.from("audit_log").insert({
+    user_id: caller.id,
+    action: body.roleId !== undefined ? "Permission Change" : "Update",
+    module: "Users",
+    details: { target_user_id: params.id, updates }
+  });
+  // Active Sessions revocation on disable is still noted separately —
+  // that feature is seed data, not yet wired to a real session table
+  // beyond the force_logout_after mechanism already applied above.
 
   return NextResponse.json({ ok: true });
 }
@@ -66,6 +83,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
+  const authorized = await hasPermission(supabase, caller.id, "system_config", "can_delete");
+  if (!authorized) {
+    return NextResponse.json({ error: "You don't have permission to delete user accounts." }, { status: 403 });
+  }
+
   const admin = createAdminClient();
   // Deleting the auth user cascades to app_users via the FK in
   // migration 0001 (`references auth.users(id) on delete cascade`) —
@@ -76,7 +98,12 @@ export async function DELETE(
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  // TODO: write audit_log row — action: 'Delete', module: 'Users'.
+  await admin.from("audit_log").insert({
+    user_id: caller.id,
+    action: "Delete",
+    module: "Users",
+    details: { deleted_user_id: params.id }
+  });
 
   return NextResponse.json({ ok: true });
 }
