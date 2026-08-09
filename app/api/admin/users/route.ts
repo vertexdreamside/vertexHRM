@@ -1,82 +1,75 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/permissions";
 
-export async function PATCH(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// Creates both the Supabase Auth account and the matching app_users row
+// in one request — these have to stay in sync, so this route is the
+// only place either gets created (the client never inserts into
+// app_users directly for a new user).
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user: caller }
   } = await supabase.auth.getUser();
+
   if (!caller) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  // User creation is a system_config-level action — only roles with
+  // can_add on system_config (System Administrator, per the seeded
+  // matrix) may create logins. Previously this route only checked
+  // "is the caller logged in," which meant any authenticated account,
+  // including a plain Employee-role one, could create arbitrary new
+  // logins by calling this endpoint directly.
+  const authorized = await hasPermission(supabase, caller.id, "system_config", "can_add");
+  if (!authorized) {
+    return NextResponse.json({ error: "You don't have permission to create user accounts." }, { status: 403 });
   }
 
   const body = await request.json();
-  const admin = createAdminClient();
+  const { email, password, username, roleId, employeeId, status } = body;
 
-  if (body.newPassword) {
-    const { error } = await admin.auth.admin.updateUserById(params.id, {
-      password: body.newPassword
-    });
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-  }
-
-  const updates: Record<string, unknown> = {};
-  if (body.username !== undefined) updates.username = body.username;
-  if (body.roleId !== undefined) updates.role_id = body.roleId;
-  if (body.employeeId !== undefined) updates.employee_id = body.employeeId || null;
-  if (body.status !== undefined) updates.status = body.status;
-  // Force-logout mechanism shared with Active Sessions (§5.9) — see
-  // app/(dashboard)/layout.tsx for the enforcement side. Disabling a
-  // user also sets this automatically so an already-open session can't
-  // keep working after being disabled — the gap noted when Users was
-  // first wired.
-  if (body.forceLogout || body.status === "disabled") {
-    updates.force_logout_after = new Date().toISOString();
-  }
-
-  if (Object.keys(updates).length > 0) {
-    const { error } = await admin.from("app_users").update(updates).eq("id", params.id);
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-  }
-
-  // TODO: write audit_log row — action: 'Update' or 'Permission Change'.
-  // TODO: if status changed to 'disabled', also revoke active sessions
-  // (§5.9) — not wired since Active Sessions is still seed data too.
-
-  return NextResponse.json({ ok: true });
-}
-
-export async function DELETE(
-  _request: Request,
-  { params }: { params: { id: string } }
-) {
-  const supabase = await createClient();
-  const {
-    data: { user: caller }
-  } = await supabase.auth.getUser();
-  if (!caller) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!email || !password || !username || !roleId) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
   const admin = createAdminClient();
-  // Deleting the auth user cascades to app_users via the FK in
-  // migration 0001 (`references auth.users(id) on delete cascade`) —
-  // deleting only the app_users row would leave an orphaned auth
-  // account able to still log in with no role/permissions resolvable.
-  const { error } = await admin.auth.admin.deleteUser(params.id);
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
+
+  const { data: authResult, error: authError } = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true
+  });
+
+  if (authError || !authResult.user) {
+    return NextResponse.json(
+      { error: authError?.message ?? "Failed to create the login account" },
+      { status: 400 }
+    );
   }
 
-  // TODO: write audit_log row — action: 'Delete', module: 'Users'.
+  const { error: insertError } = await admin.from("app_users").insert({
+    id: authResult.user.id,
+    username,
+    role_id: roleId,
+    employee_id: employeeId || null,
+    status: status ?? "enabled"
+  });
 
-  return NextResponse.json({ ok: true });
+  if (insertError) {
+    // Don't leave an auth account with no matching app_users row.
+    await admin.auth.admin.deleteUser(authResult.user.id);
+    return NextResponse.json({ error: insertError.message }, { status: 400 });
+  }
+
+  await admin.from("audit_log").insert({
+    user_id: caller.id,
+    action: "Create",
+    module: "Users",
+    details: { created_user_id: authResult.user.id, username }
+  });
+
+  return NextResponse.json({ id: authResult.user.id });
 }
