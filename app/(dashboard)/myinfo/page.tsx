@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   User, Phone, ShieldAlert, Users2, Plane, Briefcase, Wallet,
-  UserCog, GraduationCap, Award, Plus, Trash2, Pencil, Paperclip, Download
+  UserCog, GraduationCap, Award, Plus, Trash2, Pencil, Paperclip, Download, Loader2
 } from "lucide-react";
 import { clsx } from "clsx";
 import { Modal } from "@/components/ui/Modal";
+import { createClient } from "@/lib/supabase/client";
 
 // TODO(supabase): Personal/Contact/Job read from the current user's
 // `employees` row (via app_users.employee_id), same as before. The
@@ -63,6 +64,46 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export default function MyInfoPage() {
   const [activeTab, setActiveTab] = useState<TabKey>("personal");
+  const [myEmployeeId, setMyEmployeeId] = useState<string | null>(null);
+  const [myName, setMyName] = useState<string | null>(null);
+  const [myPhotoUrl, setMyPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  useEffect(() => {
+    async function resolveEmployeeId() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: appUser } = await supabase.from("app_users").select("employee_id").eq("id", user.id).single();
+      const employeeId = appUser?.employee_id ?? null;
+      setMyEmployeeId(employeeId);
+      if (!employeeId) return;
+      const { data: employee } = await supabase.from("employees").select("full_name, photo_url").eq("id", employeeId).single();
+      if (employee) {
+        setMyName(employee.full_name);
+        setMyPhotoUrl(employee.photo_url);
+      }
+    }
+    resolveEmployeeId();
+  }, []);
+
+  async function uploadPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !myEmployeeId) return;
+    setUploadingPhoto(true);
+    const supabase = createClient();
+    const path = `${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage.from("employee-photos").upload(path, file, { upsert: true });
+    if (uploadError) {
+      setUploadingPhoto(false);
+      alert(`Photo upload failed: ${uploadError.message}`);
+      return;
+    }
+    const { data } = supabase.storage.from("employee-photos").getPublicUrl(path);
+    await supabase.from("employees").update({ photo_url: data.publicUrl }).eq("id", myEmployeeId);
+    setMyPhotoUrl(data.publicUrl);
+    setUploadingPhoto(false);
+  }
 
   return (
     <div>
@@ -72,10 +113,25 @@ export default function MyInfoPage() {
       <div className="mt-6 flex flex-col gap-6 lg:flex-row">
         <div className="shrink-0 lg:w-64">
           <div className="rounded-card border border-surface-border bg-white p-5 text-center">
-            <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-brand-gradient text-xl font-medium text-white">
-              {ME.fullName.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
+            <div className="group relative mx-auto flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-brand-gradient text-xl font-medium text-white">
+              {myPhotoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={myPhotoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                (myName ?? ME.fullName).split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()
+              )}
+              <label
+                htmlFor="my-photo"
+                className="absolute inset-0 flex cursor-pointer items-center justify-center bg-ink/50 text-xs font-medium text-white opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                {uploadingPhoto ? <Loader2 size={16} className="animate-spin" /> : "Change"}
+              </label>
+              <input id="my-photo" type="file" accept="image/*" className="hidden" onChange={uploadPhoto} disabled={uploadingPhoto} />
             </div>
-            <p className="mt-3 font-display text-base font-medium text-ink">{ME.fullName}</p>
+            <p className="mt-3 font-display text-base font-medium text-ink">{myName ?? ME.fullName}</p>
+            <label htmlFor="my-photo" className="mt-1 inline-block cursor-pointer text-xs font-medium text-brand-700 hover:underline">
+              {myPhotoUrl ? "Change photo" : "Add a photo"}
+            </label>
           </div>
 
           <nav className="mt-3 space-y-0.5 rounded-card border border-surface-border bg-white p-2">
@@ -103,8 +159,8 @@ export default function MyInfoPage() {
           {activeTab === "job" && <JobTab />}
           {activeTab === "salary" && <SalaryTab />}
           {activeTab === "reportto" && <ReportToTab />}
-          {activeTab === "qualifications" && <QualificationsTab />}
-          {activeTab === "memberships" && <MembershipsTab />}
+          {activeTab === "qualifications" && <QualificationsTab employeeId={myEmployeeId} />}
+          {activeTab === "memberships" && <MembershipsTab employeeId={myEmployeeId} />}
         </div>
       </div>
     </div>
@@ -572,60 +628,85 @@ function ReportToTab() {
 }
 
 // ---------------------------------------------------------------------
+// ---------------------------------------------------------------------
 // Qualifications — Work Experience, Education, Skills
 // ---------------------------------------------------------------------
-interface WorkExperienceRow { id: string; company: string; jobTitle: string; from: string; to: string; comment: string }
-interface EducationRow { id: string; level: string; year: string; gpa: string }
+interface WorkExperienceRow { id: string; company: string; job_title: string | null; from_date: string | null; to_date: string | null; comment: string | null }
+interface EducationRow { id: string; level: string; year: string | null; gpa: string | null }
+interface SkillRow { id: string; skill_name: string; category: string; proficiency_level: string | null; issuing_body: string | null; issued_date: string | null; expiry_date: string | null }
 
-function QualificationsTab() {
+function expiryBadge(expiry: string | null) {
+  if (!expiry) return null;
+  const days = Math.ceil((new Date(expiry).getTime() - Date.now()) / 86_400_000);
+  if (days < 0) return <span className="rounded-full bg-state-dangerBg px-2 py-0.5 text-[10px] font-medium text-state-danger">Expired</span>;
+  if (days <= 30) return <span className="rounded-full bg-state-warningBg px-2 py-0.5 text-[10px] font-medium text-state-warning">Expires in {days}d</span>;
+  return null;
+}
+
+function QualificationsTab({ employeeId }: { employeeId: string | null }) {
+  const supabase = createClient();
   const [experience, setExperience] = useState<WorkExperienceRow[]>([]);
   const [education, setEducation] = useState<EducationRow[]>([]);
-  const [skills, setSkills] = useState<string[]>(["Project Management", "English", "French"]);
+  const [skills, setSkills] = useState<SkillRow[]>([]);
   const [addingExp, setAddingExp] = useState(false);
   const [addingEdu, setAddingEdu] = useState(false);
   const [addingSkill, setAddingSkill] = useState(false);
 
-  function addExperience(e: React.FormEvent<HTMLFormElement>) {
+  async function load() {
+    if (!employeeId) return;
+    const [expRes, eduRes, skillRes] = await Promise.all([
+      supabase.from("employee_work_experience").select("id, company, job_title, from_date, to_date, comment").eq("employee_id", employeeId).order("from_date", { ascending: false }),
+      supabase.from("employee_education").select("id, level, year, gpa").eq("employee_id", employeeId).order("year", { ascending: false }),
+      supabase.from("employee_skills").select("id, skill_name, category, proficiency_level, issuing_body, issued_date, expiry_date").eq("employee_id", employeeId).order("skill_name")
+    ]);
+    setExperience(expRes.data ?? []);
+    setEducation(eduRes.data ?? []);
+    setSkills((skillRes.data as SkillRow[]) ?? []);
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [employeeId]);
+
+  async function addExperience(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    setExperience((prev) => [...prev, {
-      id: crypto.randomUUID(),
-      company: String(form.get("company")),
-      jobTitle: String(form.get("jobTitle")),
-      from: String(form.get("from")),
-      to: String(form.get("to")),
-      comment: String(form.get("comment"))
-    }]);
+    await supabase.from("employee_work_experience").insert({
+      employee_id: employeeId, company: form.get("company"), job_title: form.get("jobTitle"),
+      from_date: form.get("from") || null, to_date: form.get("to") || null, comment: form.get("comment")
+    });
     setAddingExp(false);
+    load();
   }
 
-  function addEducation(e: React.FormEvent<HTMLFormElement>) {
+  async function addEducation(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    setEducation((prev) => [...prev, {
-      id: crypto.randomUUID(),
-      level: String(form.get("level")),
-      year: String(form.get("year")),
-      gpa: String(form.get("gpa"))
-    }]);
+    await supabase.from("employee_education").insert({ employee_id: employeeId, level: form.get("level"), year: form.get("year"), gpa: form.get("gpa") });
     setAddingEdu(false);
+    load();
   }
 
-  function addSkill(e: React.FormEvent<HTMLFormElement>) {
+  async function addSkill(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    const skill = String(form.get("skill")).trim();
-    if (skill) setSkills((prev) => [...prev, skill]);
+    await supabase.from("employee_skills").insert({
+      employee_id: employeeId, skill_name: form.get("skillName"), category: form.get("category"),
+      proficiency_level: form.get("proficiencyLevel") || null, issuing_body: form.get("issuingBody"),
+      issued_date: form.get("issuedDate") || null, expiry_date: form.get("expiryDate") || null
+    });
     setAddingSkill(false);
+    load();
   }
+
+  async function removeExperience(id: string) { await supabase.from("employee_work_experience").delete().eq("id", id); load(); }
+  async function removeEducation(id: string) { await supabase.from("employee_education").delete().eq("id", id); load(); }
+  async function removeSkill(id: string) { await supabase.from("employee_skills").delete().eq("id", id); load(); }
 
   return (
     <div className="space-y-5">
       <SectionCard title="Work Experience" onAdd={() => setAddingExp(true)}>
         <RecordsTable
-          columns={[{ key: "company", label: "Company" }, { key: "jobTitle", label: "Job Title" }, { key: "from", label: "From" }, { key: "to", label: "To" }, { key: "comment", label: "Comment" }]}
+          columns={[{ key: "company", label: "Company" }, { key: "job_title", label: "Job Title" }, { key: "from_date", label: "From" }, { key: "to_date", label: "To" }, { key: "comment", label: "Comment" }]}
           rows={experience}
-          onDelete={(id) => setExperience((prev) => prev.filter((r) => r.id !== id))}
+          onDelete={removeExperience}
         />
       </SectionCard>
 
@@ -633,16 +714,18 @@ function QualificationsTab() {
         <RecordsTable
           columns={[{ key: "level", label: "Level" }, { key: "year", label: "Year" }, { key: "gpa", label: "GPA/Score" }]}
           rows={education}
-          onDelete={(id) => setEducation((prev) => prev.filter((r) => r.id !== id))}
+          onDelete={removeEducation}
         />
       </SectionCard>
 
-      <SectionCard title="Skills" onAdd={() => setAddingSkill(true)}>
+      <SectionCard title="Skills, Languages &amp; Certifications" onAdd={() => setAddingSkill(true)}>
         <div className="flex flex-wrap gap-2">
           {skills.map((s) => (
-            <span key={s} className="flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
-              {s}
-              <button onClick={() => setSkills((prev) => prev.filter((x) => x !== s))} className="text-brand-700/60 hover:text-brand-700"><Trash2 size={11} /></button>
+            <span key={s.id} className="flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700">
+              {s.skill_name}
+              {s.category !== "Skill" && <span className="text-[10px] text-brand-700/70">({s.category}{s.proficiency_level ? `, ${s.proficiency_level}` : ""})</span>}
+              {expiryBadge(s.expiry_date)}
+              <button onClick={() => removeSkill(s.id)} className="text-brand-700/60 hover:text-brand-700"><Trash2 size={11} /></button>
             </span>
           ))}
           {skills.length === 0 && <p className="text-sm text-ink-soft">No Records Found</p>}
@@ -686,9 +769,19 @@ function QualificationsTab() {
       )}
 
       {addingSkill && (
-        <Modal title="Add skill" onClose={() => setAddingSkill(false)}>
+        <Modal title="Add skill, language, or certification" onClose={() => setAddingSkill(false)}>
           <form onSubmit={addSkill} className="space-y-4">
-            <div><label className="mb-1 block text-sm font-medium text-ink">Skill *</label><input name="skill" required className={inputCls} /></div>
+            <div><label className="mb-1 block text-sm font-medium text-ink">Name *</label><input name="skillName" required placeholder="e.g. First Aid Certificate" className={inputCls} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="mb-1 block text-sm font-medium text-ink">Category *</label><select name="category" required defaultValue="Skill" className={inputCls}><option value="Skill">Skill</option><option value="Language">Language</option><option value="Certification">Certification</option><option value="License">License</option></select></div>
+              <div><label className="mb-1 block text-sm font-medium text-ink">Proficiency</label><select name="proficiencyLevel" defaultValue="" className={inputCls}><option value="">—</option><option value="Beginner">Beginner</option><option value="Intermediate">Intermediate</option><option value="Advanced">Advanced</option><option value="Expert">Expert</option></select></div>
+            </div>
+            <div><label className="mb-1 block text-sm font-medium text-ink">Issuing Body</label><input name="issuingBody" placeholder="Only relevant for certifications/licenses" className={inputCls} /></div>
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="mb-1 block text-sm font-medium text-ink">Issued</label><input name="issuedDate" type="date" className={inputCls} /></div>
+              <div><label className="mb-1 block text-sm font-medium text-ink">Expires</label><input name="expiryDate" type="date" className={inputCls} /></div>
+            </div>
+            <p className="text-xs text-ink-soft">Expiry date drives the expiring-soon flag shown here and on PIM &rarr; Reports &rarr; Expiring Qualifications.</p>
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setAddingSkill(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">Cancel</button>
               <button type="submit" className="rounded-md bg-state-success px-4 py-2 text-sm font-medium text-white hover:opacity-90">Save</button>
@@ -705,23 +798,43 @@ function QualificationsTab() {
 // ---------------------------------------------------------------------
 interface MembershipRow { id: string; membership: string; subscriptionPaidBy: string; subscriptionAmount: string; currency: string; commenceDate: string; renewalDate: string }
 
-function MembershipsTab() {
+function MembershipsTab({ employeeId }: { employeeId: string | null }) {
+  const supabase = createClient();
   const [rows, setRows] = useState<MembershipRow[]>([]);
   const [adding, setAdding] = useState(false);
 
-  function add(e: React.FormEvent<HTMLFormElement>) {
+  async function load() {
+    if (!employeeId) return;
+    const { data } = await supabase
+      .from("employee_memberships")
+      .select("id, membership_name, subscription_paid_by, subscription_amount, currency, commence_date, renewal_date")
+      .eq("employee_id", employeeId)
+      .order("membership_name");
+    setRows(
+      (data ?? []).map((r) => ({
+        id: r.id, membership: r.membership_name, subscriptionPaidBy: r.subscription_paid_by ?? "",
+        subscriptionAmount: r.subscription_amount != null ? String(r.subscription_amount) : "",
+        currency: r.currency ?? "", commenceDate: r.commence_date ?? "", renewalDate: r.renewal_date ?? ""
+      }))
+    );
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [employeeId]);
+
+  async function add(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
-    setRows((prev) => [...prev, {
-      id: crypto.randomUUID(),
-      membership: String(form.get("membership")),
-      subscriptionPaidBy: String(form.get("subscriptionPaidBy")),
-      subscriptionAmount: String(form.get("subscriptionAmount")),
-      currency: String(form.get("currency")),
-      commenceDate: String(form.get("commenceDate")),
-      renewalDate: String(form.get("renewalDate"))
-    }]);
+    await supabase.from("employee_memberships").insert({
+      employee_id: employeeId, membership_name: form.get("membership"), subscription_paid_by: form.get("subscriptionPaidBy"),
+      subscription_amount: form.get("subscriptionAmount") ? Number(form.get("subscriptionAmount")) : null,
+      currency: form.get("currency"), commence_date: form.get("commenceDate") || null, renewal_date: form.get("renewalDate") || null
+    });
     setAdding(false);
+    load();
+  }
+
+  async function remove(id: string) {
+    await supabase.from("employee_memberships").delete().eq("id", id);
+    load();
   }
 
   return (
@@ -737,7 +850,7 @@ function MembershipsTab() {
             { key: "renewalDate", label: "Renewal Date" }
           ]}
           rows={rows}
-          onDelete={(id) => setRows((prev) => prev.filter((r) => r.id !== id))}
+          onDelete={remove}
         />
       </SectionCard>
       <AttachmentsBlock />
