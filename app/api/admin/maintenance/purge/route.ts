@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/permissions";
 
 // Maps each record type the UI offers to its actual table and the
 // date column "older than" filters against. Different tables use
@@ -11,7 +12,8 @@ const TARGETS: Record<string, { table: string; dateColumn: string }> = {
   leave_requests: { table: "leave_requests", dateColumn: "created_at" },
   timesheets: { table: "timesheets", dateColumn: "week_starting" },
   claims: { table: "claims", dateColumn: "submitted_date" },
-  audit_log: { table: "audit_log", dateColumn: "created_at" }
+  audit_log: { table: "audit_log", dateColumn: "created_at" },
+  candidates: { table: "candidates", dateColumn: "applied_date" }
 };
 
 export async function POST(request: Request) {
@@ -20,11 +22,17 @@ export async function POST(request: Request) {
   if (!user) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  // TODO: this only checks "are you logged in" — same authorization
-  // gap as every other privileged route in this build until Roles &
-  // Permissions is actually enforced server-side. For a
-  // permanent-delete action this is the most important place that gap
-  // should get closed first, once there's a real check to hang it on.
+
+  // Permanent deletes are the single most important place to have this
+  // check — previously only "are you logged in" was verified, meaning
+  // any authenticated account could purge leave_requests, timesheets,
+  // claims, or the audit_log itself. The Maintenance page's client-side
+  // re-auth (password re-entry) confirms identity, not authorization —
+  // this is the actual role check that was missing.
+  const authorized = await hasPermission(supabase, user.id, "system_config", "can_delete");
+  if (!authorized) {
+    return NextResponse.json({ error: "You don't have permission to purge records." }, { status: 403 });
+  }
 
   const { recordType, olderThan, confirm } = await request.json();
   const target = TARGETS[recordType];
