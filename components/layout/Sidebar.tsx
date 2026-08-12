@@ -17,6 +17,8 @@ import {
   Target,
   Receipt,
   Wrench,
+  Database,
+  BarChart3,
   Megaphone,
   ArrowLeftRight,
   ChevronLeft,
@@ -35,6 +37,8 @@ const NAV = [
   { key: "performance", label: "Performance", href: "/performance", icon: Target },
   { key: "directory", label: "Directory", href: "/directory", icon: Contact },
   { key: "maintenance", label: "Maintenance", href: "/maintenance", icon: Wrench },
+  { key: "data-export", label: "Data Export", href: "/data-export", icon: Database },
+  { key: "reports", label: "Reports & Analytics", href: "/reports", icon: BarChart3 },
   { key: "claims", label: "Claims", href: "/claims", icon: Receipt },
   { key: "buzz", label: "Buzz", href: "/buzz", icon: Megaphone }
 ];
@@ -78,7 +82,7 @@ export function Sidebar({ disabledKeys = [] }: { disabledKeys?: string[] }) {
   return (
     <aside
       className={clsx(
-        "sticky top-0 flex h-screen shrink-0 flex-col rounded-r-3xl bg-brand-gradient shadow-lg transition-all",
+        "sticky top-0 flex h-screen shrink-0 flex-col rounded-r-3xl bg-gradient-to-b from-[#0f1729] to-[#1a2540] shadow-lg transition-all",
         collapsed ? "w-20" : "w-64"
       )}
     >
