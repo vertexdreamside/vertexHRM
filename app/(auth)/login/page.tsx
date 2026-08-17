@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, ShieldCheck } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
@@ -67,32 +67,43 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="relative flex min-h-screen items-center justify-center overflow-hidden bg-cover bg-center p-6"
-      style={{ backgroundImage: "url(/login-background.png)" }}
-    >
-      <div className="absolute inset-0 bg-ink/40" aria-hidden="true" />
-
-      <div className="relative z-10 flex w-full max-w-sm flex-col items-center">
-        <div className="mb-6 flex flex-col items-center text-center">
+    <div className="flex min-h-screen">
+      {/* Left panel - brand/background, hidden below md so the form is
+          never pushed off-screen on a phone. */}
+      <div
+        className="relative hidden w-1/2 flex-col items-center justify-center overflow-hidden bg-cover bg-center p-10 text-white md:flex"
+        style={{ backgroundImage: "url(/login-background.png)" }}
+      >
+        <div className="absolute inset-0 bg-ink/55" aria-hidden="true" />
+        <div className="relative z-10 flex flex-col items-center text-center">
           <div className="rounded-2xl bg-white/15 p-4 shadow-lg backdrop-blur-md">
             <Image src="/vertexhrm-logo-reversed.svg" alt="vertexhrm" width={180} height={54} priority />
           </div>
-          <p className="mt-4 max-w-xs text-sm font-medium text-white/90">
-            All your HR and admin, in one place.
+          <h1 className="mt-6 font-display text-3xl font-medium">Vertex HRM</h1>
+          <div className="mx-auto mt-2 h-0.5 w-16 bg-gradient-to-r from-brand-500 to-sky-400" />
+          <p className="mt-4 max-w-xs text-sm text-white/80">All your HR and admin, in one place.</p>
+
+          <p className="mt-10 flex items-center gap-1.5 text-xs text-white/60">
+            <ShieldCheck size={13} /> Data encrypted in transit and at rest
+          </p>
+          <p className="mt-8 text-xs text-white/50">
+            Vertex HRM - A product of <span className="font-medium text-white/70">Databytes</span>
           </p>
         </div>
+      </div>
 
-        <div className="w-full rounded-2xl bg-white/95 p-8 shadow-xl backdrop-blur">
+      {/* Right panel - sign in. */}
+      <div className="flex w-full flex-col items-center justify-center bg-surface-subtle p-6 md:w-1/2">
+        <div className="w-full max-w-sm rounded-2xl bg-white p-8 shadow-xl">
           {mode === "signin" ? (
             <>
-              <h1 className="font-display text-2xl font-medium text-ink">Welcome back</h1>
-              <p className="mt-1 text-sm text-ink-muted">Sign in to your account to continue.</p>
+              <h1 className="font-display text-2xl font-medium text-ink">Sign In</h1>
+              <p className="mt-1 text-sm text-ink-muted">Enter your credentials to access the system.</p>
 
               <form onSubmit={handleSubmit} className="mt-6 space-y-4">
                 <div>
-                  <label htmlFor="email" className="mb-1 block text-sm font-medium text-ink">
-                    Email
+                  <label htmlFor="email" className="mb-1 block text-xs font-medium uppercase tracking-wide text-ink-soft">
+                    Username or Email
                   </label>
                   <div className="relative">
                     <Mail size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
@@ -103,14 +114,15 @@ export default function LoginPage() {
                       autoComplete="username"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full rounded-md border border-surface-border py-2 pl-9 pr-3 text-sm text-ink focus:border-brand-500"
+                      placeholder="Enter your username"
+                      className="w-full rounded-md border border-surface-border py-2.5 pl-9 pr-3 text-sm text-ink focus:border-brand-500"
                     />
                   </div>
                 </div>
 
                 <div>
                   <div className="mb-1 flex items-center justify-between">
-                    <label htmlFor="password" className="block text-sm font-medium text-ink">
+                    <label htmlFor="password" className="block text-xs font-medium uppercase tracking-wide text-ink-soft">
                       Password
                     </label>
                     <button
@@ -130,7 +142,8 @@ export default function LoginPage() {
                       autoComplete="current-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full rounded-md border border-surface-border py-2 pl-9 pr-3 text-sm text-ink focus:border-brand-500"
+                      placeholder="Enter your password"
+                      className="w-full rounded-md border border-surface-border py-2.5 pl-9 pr-3 text-sm text-ink focus:border-brand-500"
                     />
                   </div>
                 </div>
@@ -144,9 +157,9 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full rounded-md bg-state-success py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                  className="flex w-full items-center justify-center gap-2 rounded-md bg-brand-gradient py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-60"
                 >
-                  {loading ? "Signing in..." : "Sign in"}
+                  <Lock size={15} /> {loading ? "Signing in..." : "Sign In to Vertex HRM"}
                 </button>
               </form>
             </>
@@ -192,8 +205,8 @@ export default function LoginPage() {
           )}
         </div>
 
-        <p className="mt-8 text-xs text-white/60">
-          Vertex HRM &mdash; a product of <span className="font-medium text-white/80">VERTEX</span>
+        <p className="mt-6 text-center text-xs text-ink-soft">
+          Vertex HRM v0.1
         </p>
       </div>
     </div>
