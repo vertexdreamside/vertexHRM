@@ -12,7 +12,7 @@ interface PendingCounts {
   claims: number;
 }
 
-// Search lives in the Sidebar now (under the logo), not here — see
+// Search lives in the Sidebar now (under the logo), not here - see
 // components/layout/Sidebar.tsx.
 export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: string | null }) {
   const router = useRouter();
@@ -82,7 +82,7 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
             <div className="absolute right-0 z-40 mt-2 w-72 rounded-card border border-surface-border bg-white py-2 shadow-lg">
               <p className="px-4 pb-2 text-xs font-medium uppercase tracking-wide text-ink-soft">Awaiting action</p>
               {pending === null ? (
-                <p className="px-4 py-3 text-sm text-ink-soft">Loading…</p>
+                <p className="px-4 py-3 text-sm text-ink-soft">Loading...</p>
               ) : totalPending === 0 ? (
                 <p className="px-4 py-3 text-sm text-ink-soft">You&apos;re all caught up.</p>
               ) : (
@@ -108,7 +108,7 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
                 </div>
               )}
               <p className="mt-2 border-t border-surface-border px-4 pt-2 text-xs text-ink-soft">
-                Organization-wide totals — not yet scoped to your specific team.
+                Organization-wide totals - not yet scoped to your specific team.
               </p>
             </div>
           )}
@@ -193,9 +193,9 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
       {showAbout && (
         <Modal title="About vertexhrm" onClose={() => setShowAbout(false)}>
           <div className="space-y-2 text-sm text-ink-muted">
-            <p><span className="font-medium text-ink">vertexhrm</span> — internal HR and administration platform.</p>
+            <p><span className="font-medium text-ink">vertexhrm</span> - internal HR and administration platform.</p>
             <p>Version 0.1</p>
-            <p>Round Table Seychelles</p>
+            <p>Databytes</p>
           </div>
         </Modal>
       )}
@@ -267,7 +267,7 @@ export function Topbar({ userName, avatarUrl }: { userName: string; avatarUrl?: 
               <label className="mb-1 block text-sm font-medium text-ink">Confirm new password *</label>
               <input name="confirmPassword" type="password" required minLength={8} className="w-full rounded-md border border-surface-border px-3 py-2 text-sm focus:border-brand-500" />
             </div>
-            <p className="text-xs text-ink-soft">Must meet the Password Policy set in Admin → Configuration.</p>
+            <p className="text-xs text-ink-soft">Must meet the Password Policy set in Admin - Configuration.</p>
             {changePasswordError && <p className="text-sm text-state-danger">{changePasswordError}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <button type="button" onClick={() => setShowChangePassword(false)} className="rounded-md border border-surface-border px-4 py-2 text-sm text-ink-muted hover:bg-surface-subtle">
